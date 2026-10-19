@@ -146,6 +146,78 @@
             <span id="time-label" class="time-label">00:00 / 00:00</span>
           </div>
 
+          <div class="rom-bar">
+            <button type="button" id="btn-rom" class="rom-toggle" aria-expanded="false" aria-controls="rom-drawer">
+              <span aria-hidden="true">📐</span> ROM詳細
+            </button>
+          </div>
+          <div id="rom-drawer" class="rom-drawer" aria-hidden="true">
+            <div class="rom-drawer-inner">
+              <div class="rom-panel">
+                <div class="rom-head">
+                  <h3>可動域（ROM）詳細</h3>
+                  <button type="button" id="btn-rom-close" class="btn btn-ghost">閉じる</button>
+                </div>
+                <p id="rom-side" class="rom-side">手前側の腕と体幹を計測します。</p>
+
+                <section class="rom-group" aria-label="上肢">
+                  <h4>上肢 <span>Upper Limb</span></h4>
+                  <div class="rom-row">
+                    <span class="rom-name">肩関節 屈曲/伸展角</span>
+                    <span class="rom-readout">
+                      <span class="rom-tag" id="rom-shoulder-tag"></span>
+                      <span class="rom-value" id="rom-shoulder">—</span>
+                    </span>
+                  </div>
+                  <div class="rom-row">
+                    <span class="rom-name">肘関節 屈曲角</span>
+                    <span class="rom-readout">
+                      <span class="rom-tag" id="rom-elbow-tag"></span>
+                      <span class="rom-value" id="rom-elbow">—</span>
+                    </span>
+                  </div>
+                </section>
+
+                <section class="rom-group" aria-label="体幹・頚部">
+                  <h4>体幹・頚部 <span>Trunk &amp; Neck</span></h4>
+                  <div class="rom-row">
+                    <span class="rom-name">頚部前屈角</span>
+                    <span class="rom-readout">
+                      <span class="rom-tag" id="rom-neck-tag"></span>
+                      <span class="rom-value" id="rom-neck">—</span>
+                    </span>
+                  </div>
+                  <div class="rom-row">
+                    <span class="rom-name">体幹前後傾角</span>
+                    <span class="rom-readout">
+                      <span class="rom-tag" id="rom-trunk-tag"></span>
+                      <span class="rom-value" id="rom-trunk">—</span>
+                    </span>
+                  </div>
+                </section>
+
+                <section class="rom-group" aria-label="下肢">
+                  <h4>下肢 <span>Lower Limb</span></h4>
+                  <div class="rom-row">
+                    <span class="rom-name">股関節 屈曲/伸展角</span>
+                    <span class="rom-readout">
+                      <span class="rom-tag" id="rom-hip-tag"></span>
+                      <span class="rom-value" id="rom-hip">—</span>
+                    </span>
+                  </div>
+                  <div class="rom-row">
+                    <span class="rom-name">膝関節 屈曲/伸展角</span>
+                    <span class="rom-readout">
+                      <span class="rom-tag" id="rom-knee-tag"></span>
+                      <span class="rom-value" id="rom-knee">—</span>
+                    </span>
+                  </div>
+                </section>
+                <p class="rom-note">矢状面の参考値です。再生やシークはそのまま続けられます。</p>
+              </div>
+            </div>
+          </div>
+
           <section class="summary" aria-label="臨床指標サマリー">
             <div class="summary-head">
               <h3>臨床指標</h3>

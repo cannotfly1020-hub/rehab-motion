@@ -154,6 +154,30 @@
     return lines.length ? lines : [''];
   }
 
+  function drawArm(ctx, alignment, scale) {
+    const points = alignment.points;
+    const minVis = thresholds().drawVisibility;
+    const chain = [points.shoulder, points.elbow, points.wrist].filter(function (point) {
+      return point && point.visibility >= minVis;
+    });
+    if (chain.length < 2) return;
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(chain[0].x, chain[0].y);
+    for (let i = 1; i < chain.length; i += 1) ctx.lineTo(chain[i].x, chain[i].y);
+    ctx.lineWidth = 2 * scale;
+    ctx.strokeStyle = 'rgba(52, 211, 153, 0.9)';
+    ctx.stroke();
+    chain.forEach(function (point) {
+      if (point === points.shoulder) return;
+      drawDot(ctx, point, '#34d399', 3.6 * scale, scale);
+    });
+    ctx.restore();
+  }
+
   function drawChain(ctx, alignment, scale) {
     const points = alignment.points;
     const minVis = thresholds().drawVisibility;
@@ -533,6 +557,7 @@
     const alignment = safeFrame.alignment;
     if (alignment && alignment.ok && alignment.points && Number.isFinite(alignment.originX)) {
       drawChain(ctx, alignment, scale);
+      if (safeFrame.romOpen) drawArm(ctx, alignment, scale);
       drawPlumbLine(ctx, canvas, alignment.originX, scale);
     }
 

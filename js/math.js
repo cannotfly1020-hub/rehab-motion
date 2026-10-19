@@ -26,6 +26,8 @@
       label: '右',
       ear: 8,
       shoulder: 12,
+      elbow: 14,
+      wrist: 16,
       hip: 24,
       knee: 26,
       ankle: 28,
@@ -37,6 +39,8 @@
       label: '左',
       ear: 7,
       shoulder: 11,
+      elbow: 13,
+      wrist: 15,
       hip: 23,
       knee: 25,
       ankle: 27,
@@ -184,6 +188,72 @@
     return (isAnterior ? 1 : -1) * deviation;
   }
 
+  /**
+   * 関節を原点に、基準点の方向を 0° として移動点までの角を測る。
+   * 画面 Y は下向き。cross < 0 は移動点が基準方向の +X 側。
+   * FacingSign > 0 のとき +X が前方なので、その側を正（屈曲）とする。
+   * ほぼ一直線で逆向き（頭上など）は屈曲側の正とする。
+   */
+  function signedBend(joint, referencePoint, movingPoint, facingSign) {
+    if (!joint || !referencePoint || !movingPoint || !facingSign) return null;
+    const refX = referencePoint.x - joint.x;
+    const refY = referencePoint.y - joint.y;
+    const movX = movingPoint.x - joint.x;
+    const movY = movingPoint.y - joint.y;
+    const magnitude = Math.hypot(refX, refY) * Math.hypot(movX, movY);
+    if (!Number.isFinite(magnitude) || magnitude < 1e-4) return null;
+    const cosine = clamp((refX * movX + refY * movY) / magnitude, -1, 1);
+    const angle = Math.acos(cosine) * 180 / Math.PI;
+    if (angle < 0.5) return 0;
+    const cross = refX * movY - refY * movX;
+    if (Math.abs(cross) < 1e-4) return angle;
+    const isAnterior = facingSign > 0 ? cross < 0 : cross > 0;
+    return (isAnterior ? 1 : -1) * angle;
+  }
+
+  /** 下の点から上の点を結ぶ線が、上向き鉛直から何度前にあるか。正が前方。 */
+  function signedLean(upper, lower, facingSign) {
+    if (!upper || !lower || !facingSign) return null;
+    const dx = upper.x - lower.x;
+    const dy = upper.y - lower.y;
+    if (Math.hypot(dx, dy) < 1e-4) return null;
+    const angle = Math.atan2(dx, -dy) * 180 / Math.PI;
+    const signed = facingSign > 0 ? angle : -angle;
+    if (Math.abs(signed) < 0.5) return 0;
+    return signed;
+  }
+
+  /** 肘の屈曲角。3点の内角を 180° から引き、完全伸展を 0°、直角を 90° とする。 */
+  function elbowFlexion(shoulder, elbow, wrist) {
+    if (!shoulder || !elbow || !wrist) return null;
+    const armX = shoulder.x - elbow.x;
+    const armY = shoulder.y - elbow.y;
+    const forearmX = wrist.x - elbow.x;
+    const forearmY = wrist.y - elbow.y;
+    const magnitude = Math.hypot(armX, armY) * Math.hypot(forearmX, forearmY);
+    if (!Number.isFinite(magnitude) || magnitude < 1e-4) return null;
+    const cosine = clamp((armX * forearmX + armY * forearmY) / magnitude, -1, 1);
+    const raw = Math.acos(cosine) * 180 / Math.PI;
+    const clinical = 180 - raw;
+    if (clinical < 0.5) return 0;
+    return clinical;
+  }
+
+  function nullRom() {
+    return {
+      shoulderDeg: null,
+      elbowDeg: null,
+      neckDeg: null,
+      trunkDeg: null,
+      hipDeg: null,
+      kneeDeg: null
+    };
+  }
+
+  function pointVisible(point) {
+    return !!(point && point.visibility >= RM.THRESHOLDS.minVisibility);
+  }
+
   function emptyResult(heightCm, warnings, extra) {
     return Object.assign({
       ok: false,
@@ -199,6 +269,7 @@
       meanVisibility: null,
       kneeAngleDeg: null,
       recurvatum: null,
+      rom: nullRom(),
       points: null
     }, extra || {});
   }
@@ -250,6 +321,19 @@
     if (rounded < RM.THRESHOLDS.recurvatumDeg) return '反張膝';
     if (rounded > RM.THRESHOLDS.flexionNotableDeg) return '屈曲拘縮疑い';
     return '基準範囲';
+  };
+
+  RM.formatSignedDeg = function formatSignedDeg(angle) {
+    const rounded = round1(angle);
+    if (rounded === null) return '—';
+    if (rounded === 0) return '0.0°';
+    return (rounded > 0 ? '+' : '') + rounded.toFixed(1) + '°';
+  };
+
+  RM.formatUnsignedDeg = function formatUnsignedDeg(angle) {
+    const rounded = round1(angle);
+    if (rounded === null) return '—';
+    return Math.abs(rounded).toFixed(1) + '°';
   };
 
   RM.formatRecurvatum = function formatRecurvatum(recurvatum) {
@@ -319,6 +403,8 @@
     }
     const heel = landmarks[side.heel] ? toCanvas(landmarks[side.heel], bounds) : null;
     const toe = landmarks[side.toe] ? toCanvas(landmarks[side.toe], bounds) : null;
+    const elbow = landmarks[side.elbow] ? toCanvas(landmarks[side.elbow], bounds) : null;
+    const wrist = landmarks[side.wrist] ? toCanvas(landmarks[side.wrist], bounds) : null;
     ear.label = '耳垂';
     shoulder.label = '肩峰';
     hip.label = '大転子';
@@ -326,6 +412,8 @@
     ankle.label = '外果';
     if (heel) heel.label = '踵';
     if (toe) toe.label = 'つま先';
+    if (elbow) elbow.label = '肘';
+    if (wrist) wrist.label = '手';
 
     const vertex = estimateVertex(ear, ankle);
     const euclidean = Math.hypot(ankle.x - ear.x, ankle.y - ear.y);
@@ -366,6 +454,28 @@
       warnings.push('関節の視認性が低いため、数値は参考です。');
     }
 
+    const downwardTrunk = {
+      x: hip.x * 2 - shoulder.x,
+      y: hip.y * 2 - shoulder.y,
+      visibility: Math.min(hip.visibility, shoulder.visibility)
+    };
+    const rom = nullRom();
+    if (pointVisible(shoulder) && pointVisible(elbow) && pointVisible(hip)) {
+      rom.shoulderDeg = round1(signedBend(shoulder, hip, elbow, facing.facingSign));
+    }
+    if (pointVisible(shoulder) && pointVisible(elbow) && pointVisible(wrist)) {
+      rom.elbowDeg = round1(elbowFlexion(shoulder, elbow, wrist));
+    }
+    if (pointVisible(ear) && pointVisible(shoulder)) {
+      rom.neckDeg = round1(signedLean(ear, shoulder, facing.facingSign));
+    }
+    if (pointVisible(shoulder) && pointVisible(hip)) {
+      rom.trunkDeg = round1(signedLean(shoulder, hip, facing.facingSign));
+    }
+    if (pointVisible(shoulder) && pointVisible(hip) && pointVisible(knee)) {
+      rom.hipDeg = round1(signedBend(hip, downwardTrunk, knee, facing.facingSign));
+    }
+
     let kneeAngleDeg = null;
     const kneeReliable = hip.visibility >= RM.THRESHOLDS.minVisibility
       && knee.visibility >= RM.THRESHOLDS.minVisibility
@@ -376,6 +486,7 @@
         warnings.push('膝角度を計算できません。');
       } else {
         kneeAngleDeg = round1(rawAngle);
+        rom.kneeDeg = kneeAngleDeg;
         if (kneeAngleDeg < RM.THRESHOLDS.recurvatumDeg) {
           warnings.push('反張膝の基準（−5°未満）に該当します。');
         } else if (kneeAngleDeg > RM.THRESHOLDS.flexionNotableDeg) {
@@ -398,10 +509,13 @@
       meanVisibility: meanVisibility,
       kneeAngleDeg: kneeAngleDeg,
       recurvatum: kneeAngleDeg === null ? null : kneeAngleDeg < RM.THRESHOLDS.recurvatumDeg,
+      rom: rom,
       points: {
         vertex: vertex,
         ear: ear,
         shoulder: shoulder,
+        elbow: elbow,
+        wrist: wrist,
         hip: hip,
         knee: knee,
         ankle: ankle,

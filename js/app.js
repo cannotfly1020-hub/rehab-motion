@@ -16,6 +16,8 @@
     'formatDeviation',
     'formatKnee',
     'formatKneeJudgement',
+    'formatSignedDeg',
+    'formatUnsignedDeg',
     'deviationTone',
     'kneeTone'
   ];
@@ -67,6 +69,7 @@
       rawLandmarks: null,
       alignment: null,
       hudCollapsed: false,
+      isRomDrawerOpen: false,
       scrubbing: false,
       rafId: 0,
       sourceName: '',
@@ -156,6 +159,7 @@
           alignment: state.alignment,
           diagnostics: RM.aiDiagnostics,
           hudCollapsed: state.hudCollapsed,
+          romOpen: state.isRomDrawerOpen,
           message: stageMessage(),
           hint: stageHint()
         });
@@ -210,7 +214,70 @@
         setMetric('metric-knee', kneeText, RM.kneeTone(alignment.kneeAngleDeg));
         if (judge) judge.textContent = RM.formatKneeJudgement(alignment.kneeAngleDeg);
       }
+      updateRom();
       updateNotes();
+    }
+
+    function directionTag(angle, positive, negative) {
+      if (typeof angle !== 'number' || !Number.isFinite(angle)) return '';
+      if (angle > 0.5) return positive;
+      if (angle < -0.5) return negative;
+      return '中間位';
+    }
+
+    function setRom(id, text, tag, tone) {
+      const node = document.getElementById(id);
+      if (node) paintMeasure(node, text);
+      const tagNode = document.getElementById(id + '-tag');
+      const label = tag || '';
+      if (tagNode && tagNode.textContent !== label) tagNode.textContent = label;
+      const row = node && node.closest('.rom-row');
+      if (row && row.dataset.tone !== (tone || 'none')) row.dataset.tone = tone || 'none';
+    }
+
+    function updateRom() {
+      const alignment = state.alignment;
+      const rom = alignment && alignment.rom;
+      const sideNote = document.getElementById('rom-side');
+      if (!alignment || !alignment.ok || !rom) {
+        setRom('rom-shoulder', '—', '', 'none');
+        setRom('rom-elbow', '—', '', 'none');
+        setRom('rom-neck', '—', '', 'none');
+        setRom('rom-trunk', '—', '', 'none');
+        setRom('rom-hip', '—', '', 'none');
+        setRom('rom-knee', '—', '', 'none');
+        if (sideNote) sideNote.textContent = '手前側の腕と体幹を計測します。';
+        return;
+      }
+      setRom('rom-shoulder', RM.formatSignedDeg(rom.shoulderDeg), directionTag(rom.shoulderDeg, '屈曲', '伸展'), 'none');
+      const elbowTag = typeof rom.elbowDeg !== 'number' ? '' : (rom.elbowDeg < 0.5 ? '伸展位' : '屈曲');
+      setRom('rom-elbow', RM.formatUnsignedDeg(rom.elbowDeg), elbowTag, 'none');
+      setRom('rom-neck', RM.formatSignedDeg(rom.neckDeg), directionTag(rom.neckDeg, '前屈', '後屈'), 'none');
+      setRom('rom-trunk', RM.formatSignedDeg(rom.trunkDeg), directionTag(rom.trunkDeg, '前傾', '後傾'), 'none');
+      setRom('rom-hip', RM.formatSignedDeg(rom.hipDeg), directionTag(rom.hipDeg, '屈曲', '伸展'), 'none');
+      const kneeJudge = RM.formatKneeJudgement(rom.kneeDeg);
+      setRom(
+        'rom-knee',
+        RM.formatSignedDeg(rom.kneeDeg),
+        kneeJudge === '—' ? '' : kneeJudge,
+        RM.kneeTone(rom.kneeDeg)
+      );
+      if (sideNote) {
+        sideNote.textContent = alignment.sideLabel + '側（手前）の腕・体幹・下肢です。前方は' + alignment.facingLabel + '。';
+      }
+    }
+
+    function setRomOpen(open) {
+      state.isRomDrawerOpen = !!open;
+      const drawer = document.getElementById('rom-drawer');
+      const toggle = document.getElementById('btn-rom');
+      if (drawer) {
+        drawer.classList.toggle('is-open', state.isRomDrawerOpen);
+        drawer.setAttribute('aria-hidden', state.isRomDrawerOpen ? 'false' : 'true');
+        if ('inert' in drawer) drawer.inert = !state.isRomDrawerOpen;
+      }
+      if (toggle) toggle.setAttribute('aria-expanded', state.isRomDrawerOpen ? 'true' : 'false');
+      if (state.step === 3) renderFrameOnly();
     }
 
     function updateNotes() {
@@ -570,6 +637,20 @@
       else setHeight(heightInput.value);
     });
 
+    const romToggle = document.getElementById('btn-rom');
+    const romClose = document.getElementById('btn-rom-close');
+    if (romToggle) {
+      romToggle.addEventListener('click', function () {
+        setRomOpen(!state.isRomDrawerOpen);
+      });
+    }
+    if (romClose) {
+      romClose.addEventListener('click', function () {
+        setRomOpen(false);
+        if (romToggle) romToggle.focus();
+      });
+    }
+
     playButton.addEventListener('click', togglePlay);
     frameBackButton.addEventListener('click', function () { stepFrame(-1); });
     frameForwardButton.addEventListener('click', function () { stepFrame(1); });
@@ -662,6 +743,10 @@
     });
 
     global.addEventListener('keydown', function (event) {
+      if (event.code === 'Escape' && state.isRomDrawerOpen) {
+        setRomOpen(false);
+        return;
+      }
       const tag = event.target && event.target.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON' || tag === 'LABEL') return;
       if (state.step !== 3) return;
@@ -687,6 +772,7 @@
     });
 
     setHeight(state.heightCm);
+    setRomOpen(false);
     syncTransport();
     updateSourceLabel();
     goToStep(1);
