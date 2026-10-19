@@ -143,8 +143,7 @@
         + ' 耳垂 ' + RM.formatDeviation(alignment.points.ear && alignment.points.ear.cm)
         + '、肩峰 ' + RM.formatDeviation(alignment.points.shoulder && alignment.points.shoulder.cm)
         + '、大転子 ' + RM.formatDeviation(alignment.points.hip && alignment.points.hip.cm)
-        + '、膝 ' + RM.formatKnee(alignment.kneeAngleDeg)
-        + '、判定 ' + RM.formatKneeJudgement(alignment.kneeAngleDeg)
+        + '、膝 ' + RM.ClinicalAngleFormatter.formatKnee(alignment.kneeAngleDeg).text
         + '。';
     }
 
@@ -210,58 +209,81 @@
         setMetric('metric-ear', RM.formatDeviation(alignment.points.ear.cm), RM.deviationTone(alignment.points.ear.cm));
         setMetric('metric-shoulder', RM.formatDeviation(alignment.points.shoulder.cm), RM.deviationTone(alignment.points.shoulder.cm));
         setMetric('metric-hip', RM.formatDeviation(alignment.points.hip.cm), RM.deviationTone(alignment.points.hip.cm));
-        const kneeText = String(RM.formatKnee(alignment.kneeAngleDeg)).replace(/（[^）]*）$/, '');
-        setMetric('metric-knee', kneeText, RM.kneeTone(alignment.kneeAngleDeg));
-        if (judge) judge.textContent = RM.formatKneeJudgement(alignment.kneeAngleDeg);
+        const kneeView = RM.ClinicalAngleFormatter.formatKnee(alignment.kneeAngleDeg);
+        setMetric('metric-knee', kneeView.val, RM.kneeTone(alignment.kneeAngleDeg));
+        if (judge) {
+          const sub = kneeView.val === '—'
+            ? '—'
+            : (kneeView.badge ? kneeView.dir + ' · ' + kneeView.badge : kneeView.dir);
+          judge.textContent = sub || '—';
+        }
       }
       updateRom();
       updateNotes();
     }
 
-    function directionTag(angle, positive, negative) {
-      if (typeof angle !== 'number' || !Number.isFinite(angle)) return '';
-      if (angle > 0.5) return positive;
-      if (angle < -0.5) return negative;
-      return '中間位';
+    function clinicalTone(view) {
+      if (!view || view.val === '—') return 'none';
+      if (view.status === 'alert' || view.status === 'warn' || view.status === 'ok') return view.status;
+      return view.isWarning ? 'warn' : 'ok';
     }
 
-    function setRom(id, text, tag, tone) {
+    function paintRomValue(node, val) {
+      const raw = val || '—';
+      if (node.dataset.raw === raw) return;
+      node.dataset.raw = raw;
+      node.textContent = '';
+      if (raw === '—') {
+        node.textContent = '—';
+        return;
+      }
+      const numeric = String(raw).replace('°', '');
+      node.appendChild(document.createTextNode(numeric));
+      const unit = document.createElement('small');
+      unit.textContent = '°';
+      node.appendChild(unit);
+    }
+
+    function setRom(id, view) {
       const node = document.getElementById(id);
-      if (node) paintMeasure(node, text);
-      const tagNode = document.getElementById(id + '-tag');
-      const label = tag || '';
-      if (tagNode && tagNode.textContent !== label) tagNode.textContent = label;
-      const row = node && node.closest('.rom-row');
-      if (row && row.dataset.tone !== (tone || 'none')) row.dataset.tone = tone || 'none';
+      if (!node) return;
+      const missing = !view || view.val === '—';
+      paintRomValue(node, missing ? '—' : view.val);
+      const dirNode = document.getElementById(id + '-dir');
+      const dir = missing ? '' : (view.dir || '');
+      if (dirNode && dirNode.textContent !== dir) dirNode.textContent = dir;
+      const badgeNode = document.getElementById(id + '-badge');
+      const badge = missing ? '' : (view.badge || '');
+      if (badgeNode && badgeNode.textContent !== badge) badgeNode.textContent = badge;
+      if (badgeNode) {
+        badgeNode.className = 'rom-badge' + (missing || !view.status ? '' : ' ' + view.status);
+      }
+      const row = node.closest('.rom-item') || node.closest('.rom-row');
+      const tone = clinicalTone(missing ? null : view);
+      if (row && row.dataset.tone !== tone) row.dataset.tone = tone;
     }
 
     function updateRom() {
       const alignment = state.alignment;
       const rom = alignment && alignment.rom;
       const sideNote = document.getElementById('rom-side');
+      const format = RM.ClinicalAngleFormatter;
       if (!alignment || !alignment.ok || !rom) {
-        setRom('rom-shoulder', '—', '', 'none');
-        setRom('rom-elbow', '—', '', 'none');
-        setRom('rom-neck', '—', '', 'none');
-        setRom('rom-trunk', '—', '', 'none');
-        setRom('rom-hip', '—', '', 'none');
-        setRom('rom-knee', '—', '', 'none');
+        setRom('rom-shoulder', null);
+        setRom('rom-elbow', null);
+        setRom('rom-neck', null);
+        setRom('rom-trunk', null);
+        setRom('rom-hip', null);
+        setRom('rom-knee', null);
         if (sideNote) sideNote.textContent = '手前側の腕と体幹を計測します。';
         return;
       }
-      setRom('rom-shoulder', RM.formatSignedDeg(rom.shoulderDeg), directionTag(rom.shoulderDeg, '屈曲', '伸展'), 'none');
-      const elbowTag = typeof rom.elbowDeg !== 'number' ? '' : (rom.elbowDeg < 0.5 ? '伸展位' : '屈曲');
-      setRom('rom-elbow', RM.formatUnsignedDeg(rom.elbowDeg), elbowTag, 'none');
-      setRom('rom-neck', RM.formatSignedDeg(rom.neckDeg), directionTag(rom.neckDeg, '前屈', '後屈'), 'none');
-      setRom('rom-trunk', RM.formatSignedDeg(rom.trunkDeg), directionTag(rom.trunkDeg, '前傾', '後傾'), 'none');
-      setRom('rom-hip', RM.formatSignedDeg(rom.hipDeg), directionTag(rom.hipDeg, '屈曲', '伸展'), 'none');
-      const kneeJudge = RM.formatKneeJudgement(rom.kneeDeg);
-      setRom(
-        'rom-knee',
-        RM.formatSignedDeg(rom.kneeDeg),
-        kneeJudge === '—' ? '' : kneeJudge,
-        RM.kneeTone(rom.kneeDeg)
-      );
+      setRom('rom-shoulder', format.formatShoulder(rom.shoulderDeg));
+      setRom('rom-elbow', format.formatElbow(rom.elbowDeg));
+      setRom('rom-neck', format.formatNeck(rom.neckDeg));
+      setRom('rom-trunk', format.formatTrunk(rom.trunkDeg));
+      setRom('rom-hip', format.formatHip(rom.hipDeg));
+      setRom('rom-knee', format.formatKnee(rom.kneeDeg));
       if (sideNote) {
         sideNote.textContent = alignment.sideLabel + '側（手前）の腕・体幹・下肢です。前方は' + alignment.facingLabel + '。';
       }

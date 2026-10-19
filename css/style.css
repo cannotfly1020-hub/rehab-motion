@@ -785,30 +785,36 @@ input:focus-visible {
   text-transform: uppercase;
 }
 
-.rom-row {
+.rom-item {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
+  justify-content: flex-end;
+  gap: 4px 8px;
   padding: 8px 0;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.rom-name {
+.rom-joint {
+  flex: 1 1 4.5rem;
+  min-width: 0;
+  margin-right: auto;
   color: var(--muted);
   font-size: 13px;
 }
 
-.rom-readout {
-  display: flex;
-  align-items: baseline;
-  justify-content: flex-end;
-  gap: 8px;
-  min-width: 0;
+.rom-dir {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tabular-nums,
+.rom-value {
+  font-variant-numeric: tabular-nums;
 }
 
 .rom-value {
-  font-variant-numeric: tabular-nums;
   font-size: 1.35rem;
   font-weight: 680;
   letter-spacing: -0.03em;
@@ -817,26 +823,39 @@ input:focus-visible {
   white-space: nowrap;
 }
 
-.rom-value .unit {
-  margin-left: 0.08em;
+.rom-value small {
+  margin-left: 0.06em;
   font-size: 0.62em;
   font-weight: 620;
   letter-spacing: 0;
   color: rgba(255, 255, 255, 0.6);
 }
 
-.rom-tag {
-  min-width: 4.2em;
-  color: var(--unit);
+.rom-badge {
   font-size: 11px;
   font-weight: 700;
-  text-align: right;
   white-space: nowrap;
 }
 
-.rom-row[data-tone="ok"] .rom-tag { color: var(--ok); }
-.rom-row[data-tone="warn"] .rom-tag { color: var(--warn); }
-.rom-row[data-tone="alert"] .rom-tag { color: var(--alert); }
+.rom-badge:empty {
+  display: none;
+}
+
+.rom-item[data-tone="ok"] .rom-dir,
+.rom-item[data-tone="ok"] .rom-value,
+.rom-badge.ok { color: var(--ok); }
+.rom-item[data-tone="warn"] .rom-dir,
+.rom-item[data-tone="warn"] .rom-value,
+.rom-badge.warn { color: #fbbf24; }
+.rom-item[data-tone="alert"] .rom-dir,
+.rom-item[data-tone="alert"] .rom-value,
+.rom-badge.alert { color: #f43f5e; }
+
+.rom-item[data-tone="ok"] .rom-value small,
+.rom-item[data-tone="warn"] .rom-value small,
+.rom-item[data-tone="alert"] .rom-value small {
+  color: rgba(255, 255, 255, 0.6);
+}
 
 .time-label {
   font-variant-numeric: tabular-nums;

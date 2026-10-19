@@ -366,6 +366,14 @@
     return { x: x, y: y };
   }
 
+  function clinicalKneeLabel(angle) {
+    const format = RM.ClinicalAngleFormatter || RM.RomFormatter;
+    if (!format || typeof format.formatKnee !== 'function') return '膝: —';
+    const view = format.formatKnee(angle);
+    if (!view || view.val === '—') return '膝: —';
+    return '膝: ' + view.text;
+  }
+
   function drawConnectors(ctx, canvas, alignment, scale) {
     const originX = alignment.originX;
     const joints = [alignment.points.ear, alignment.points.shoulder, alignment.points.hip];
@@ -398,10 +406,7 @@
     if (alignment.points.knee && alignment.points.knee.visibility >= thresholds().drawVisibility) {
       drawDot(ctx, alignment.points.knee, kneeColor(alignment.kneeAngleDeg), 4.5 * scale, scale);
       if (typeof alignment.kneeAngleDeg === 'number') {
-        const fullKnee = typeof RM.formatKnee === 'function'
-          ? RM.formatKnee(alignment.kneeAngleDeg)
-          : alignment.kneeAngleDeg.toFixed(1) + '°';
-        const label = '膝 ' + String(fullKnee).replace(/（[^）]*）$/, '');
+        const label = clinicalKneeLabel(alignment.kneeAngleDeg);
         const at = placeBadge(alignment.points.knee, measureBadge(ctx, label, scale), scale, canvas, placed);
         drawBadge(ctx, at.x, at.y, label, kneeColor(alignment.kneeAngleDeg), scale);
       }

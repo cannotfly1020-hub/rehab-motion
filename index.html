@@ -162,55 +162,49 @@
 
                 <section class="rom-group" aria-label="上肢">
                   <h4>上肢 <span>Upper Limb</span></h4>
-                  <div class="rom-row">
-                    <span class="rom-name">肩関節 屈曲/伸展角</span>
-                    <span class="rom-readout">
-                      <span class="rom-tag" id="rom-shoulder-tag"></span>
-                      <span class="rom-value" id="rom-shoulder">—</span>
-                    </span>
+                  <div class="rom-item" data-tone="none">
+                    <span class="rom-joint">肩関節</span>
+                    <span class="rom-dir" id="rom-shoulder-dir"></span>
+                    <span class="rom-value tabular-nums" id="rom-shoulder">—</span>
+                    <span class="rom-badge" id="rom-shoulder-badge"></span>
                   </div>
-                  <div class="rom-row">
-                    <span class="rom-name">肘関節 屈曲角</span>
-                    <span class="rom-readout">
-                      <span class="rom-tag" id="rom-elbow-tag"></span>
-                      <span class="rom-value" id="rom-elbow">—</span>
-                    </span>
+                  <div class="rom-item" data-tone="none">
+                    <span class="rom-joint">肘関節</span>
+                    <span class="rom-dir" id="rom-elbow-dir"></span>
+                    <span class="rom-value tabular-nums" id="rom-elbow">—</span>
+                    <span class="rom-badge" id="rom-elbow-badge"></span>
                   </div>
                 </section>
 
                 <section class="rom-group" aria-label="体幹・頚部">
                   <h4>体幹・頚部 <span>Trunk &amp; Neck</span></h4>
-                  <div class="rom-row">
-                    <span class="rom-name">頚部前屈角</span>
-                    <span class="rom-readout">
-                      <span class="rom-tag" id="rom-neck-tag"></span>
-                      <span class="rom-value" id="rom-neck">—</span>
-                    </span>
+                  <div class="rom-item" data-tone="none">
+                    <span class="rom-joint">頚部</span>
+                    <span class="rom-dir" id="rom-neck-dir"></span>
+                    <span class="rom-value tabular-nums" id="rom-neck">—</span>
+                    <span class="rom-badge" id="rom-neck-badge"></span>
                   </div>
-                  <div class="rom-row">
-                    <span class="rom-name">体幹前後傾角</span>
-                    <span class="rom-readout">
-                      <span class="rom-tag" id="rom-trunk-tag"></span>
-                      <span class="rom-value" id="rom-trunk">—</span>
-                    </span>
+                  <div class="rom-item" data-tone="none">
+                    <span class="rom-joint">体幹</span>
+                    <span class="rom-dir" id="rom-trunk-dir"></span>
+                    <span class="rom-value tabular-nums" id="rom-trunk">—</span>
+                    <span class="rom-badge" id="rom-trunk-badge"></span>
                   </div>
                 </section>
 
                 <section class="rom-group" aria-label="下肢">
                   <h4>下肢 <span>Lower Limb</span></h4>
-                  <div class="rom-row">
-                    <span class="rom-name">股関節 屈曲/伸展角</span>
-                    <span class="rom-readout">
-                      <span class="rom-tag" id="rom-hip-tag"></span>
-                      <span class="rom-value" id="rom-hip">—</span>
-                    </span>
+                  <div class="rom-item" data-tone="none">
+                    <span class="rom-joint">股関節</span>
+                    <span class="rom-dir" id="rom-hip-dir"></span>
+                    <span class="rom-value tabular-nums" id="rom-hip">—</span>
+                    <span class="rom-badge" id="rom-hip-badge"></span>
                   </div>
-                  <div class="rom-row">
-                    <span class="rom-name">膝関節 屈曲/伸展角</span>
-                    <span class="rom-readout">
-                      <span class="rom-tag" id="rom-knee-tag"></span>
-                      <span class="rom-value" id="rom-knee">—</span>
-                    </span>
+                  <div class="rom-item" data-tone="none">
+                    <span class="rom-joint">膝関節</span>
+                    <span class="rom-dir" id="rom-knee-dir"></span>
+                    <span class="rom-value tabular-nums" id="rom-knee">—</span>
+                    <span class="rom-badge" id="rom-knee-badge"></span>
                   </div>
                 </section>
                 <p class="rom-note">矢状面の参考値です。再生やシークはそのまま続けられます。</p>
@@ -225,7 +219,7 @@
                 <span class="swatch swatch-ok" aria-hidden="true"></span>±1.5 cm
                 <span class="swatch swatch-warn" aria-hidden="true"></span>3.0 cmまで
                 <span class="swatch swatch-alert" aria-hidden="true"></span>3.0 cm超
-                ／ 膝 −5°未満は反張膝、+5°超は屈曲拘縮疑い
+                ／ 膝は3°を超える過伸展で反張膝、5°を超える屈曲で屈曲拘縮疑い
               </p>
             </div>
             <div class="metrics">

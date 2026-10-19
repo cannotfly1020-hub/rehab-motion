@@ -223,20 +223,16 @@
     return signed;
   }
 
-  /** 肘の屈曲角。3点の内角を 180° から引き、完全伸展を 0°、直角を 90° とする。 */
-  function elbowFlexion(shoulder, elbow, wrist) {
+  /**
+   * 肘の臨床角。上腕の延長線を 0° とし、前方が屈曲（正）、後方が過伸展（負）。
+   */
+  function elbowFlexion(shoulder, elbow, wrist, facingSign) {
     if (!shoulder || !elbow || !wrist) return null;
-    const armX = shoulder.x - elbow.x;
-    const armY = shoulder.y - elbow.y;
-    const forearmX = wrist.x - elbow.x;
-    const forearmY = wrist.y - elbow.y;
-    const magnitude = Math.hypot(armX, armY) * Math.hypot(forearmX, forearmY);
-    if (!Number.isFinite(magnitude) || magnitude < 1e-4) return null;
-    const cosine = clamp((armX * forearmX + armY * forearmY) / magnitude, -1, 1);
-    const raw = Math.acos(cosine) * 180 / Math.PI;
-    const clinical = 180 - raw;
-    if (clinical < 0.5) return 0;
-    return clinical;
+    const straight = {
+      x: elbow.x * 2 - shoulder.x,
+      y: elbow.y * 2 - shoulder.y
+    };
+    return signedBend(elbow, straight, wrist, facingSign);
   }
 
   function nullRom() {
@@ -285,17 +281,16 @@
   RM.deviationTone = deviationTone;
 
   RM.kneeTone = function kneeTone(angle) {
-    if (typeof angle !== 'number' || !Number.isFinite(angle)) return 'none';
-    if (angle < RM.THRESHOLDS.recurvatumDeg) return 'alert';
-    if (angle > RM.THRESHOLDS.flexionNotableDeg) return 'warn';
-    return 'ok';
+    const status = RM.ClinicalAngleFormatter.formatKnee(angle).status;
+    if (status === 'alert' || status === 'warn' || status === 'ok') return status;
+    return 'none';
   };
 
   RM.formatSignedCm = function formatSignedCm(cm) {
     const rounded = round1(cm);
     if (rounded === null) return '—';
     if (rounded === 0) return '0.0 cm';
-    return (rounded > 0 ? '+' : '') + rounded.toFixed(1) + ' cm';
+    return (rounded > 0 ? '前 ' : '後 ') + Math.abs(rounded).toFixed(1) + ' cm';
   };
 
   RM.formatDeviation = function formatDeviation(cm) {
@@ -303,31 +298,189 @@
     if (rounded === null) return '—';
     if (rounded === 0) return '正中 0.0 cm';
     const direction = rounded > 0 ? '前' : '後';
-    return direction + ' ' + (rounded > 0 ? '+' : '') + rounded.toFixed(1) + ' cm';
+    return direction + ' ' + Math.abs(rounded).toFixed(1) + ' cm';
   };
 
+  function clinicalNumber(deg) {
+    if (deg === null || deg === undefined || deg === '') return null;
+    const value = Number(deg);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  function emptyClinical(extra) {
+    return Object.assign({
+      dir: '',
+      label: '',
+      val: '—',
+      value: '—',
+      text: '—',
+      isWarning: false,
+      isFlex: false,
+      badge: '',
+      status: 'none'
+    }, extra || {});
+  }
+
+  function clinicalView(fields) {
+    const dir = fields.dir || '';
+    const val = fields.val || '—';
+    return {
+      dir: dir,
+      label: dir,
+      val: val,
+      value: val,
+      text: fields.text || '—',
+      isWarning: !!fields.isWarning,
+      isFlex: !!fields.isFlex,
+      badge: fields.badge || '',
+      status: fields.status || (val === '—' ? 'none' : (fields.isWarning ? 'warn' : 'ok'))
+    };
+  }
+
+  /**
+   * 臨床標準表記。内部の符号付き角度を、運動方向と絶対値だけに変える。
+   * 画面へは text / dir / val だけを渡し、+ と − は出さない。
+   */
+  RM.ClinicalAngleFormatter = {
+    formatShoulder: function formatShoulder(deg) {
+      const value = clinicalNumber(deg);
+      if (value === null) return emptyClinical();
+      const absVal = Math.abs(value);
+      if (absVal < 1) {
+        return clinicalView({ dir: '中間位', val: '0.0°', text: '中間位 0°', isWarning: false, isFlex: false });
+      }
+      const isFlex = value > 0;
+      const label = isFlex ? '屈曲' : '伸展';
+      return clinicalView({
+        dir: label,
+        val: absVal.toFixed(1) + '°',
+        text: label + ' ' + absVal.toFixed(1) + '°',
+        isWarning: isFlex && absVal > 20,
+        isFlex: isFlex
+      });
+    },
+
+    formatElbow: function formatElbow(deg) {
+      const value = clinicalNumber(deg);
+      if (value === null) return emptyClinical();
+      const absVal = Math.abs(value);
+      if (absVal < 2) {
+        return clinicalView({ dir: '中間位', val: '0.0°', text: '中間位 0°', isWarning: false, isFlex: false });
+      }
+      const isFlex = value >= 0;
+      const label = isFlex ? '屈曲' : '過伸展';
+      return clinicalView({
+        dir: label,
+        val: absVal.toFixed(1) + '°',
+        text: label + ' ' + absVal.toFixed(1) + '°',
+        isWarning: isFlex ? absVal > 30 : absVal > 5,
+        isFlex: isFlex,
+        status: (isFlex ? absVal > 30 : absVal > 5) ? 'warn' : 'ok'
+      });
+    },
+
+    formatNeck: function formatNeck(deg) {
+      const value = clinicalNumber(deg);
+      if (value === null) return emptyClinical();
+      const absVal = Math.abs(value);
+      if (absVal < 1) {
+        return clinicalView({ dir: '中間位', val: '0.0°', text: '中間位 0°', isWarning: false });
+      }
+      const isAnt = value > 0;
+      const label = isAnt ? '前屈' : '後屈';
+      return clinicalView({
+        dir: label,
+        val: absVal.toFixed(1) + '°',
+        text: label + ' ' + absVal.toFixed(1) + '°',
+        isWarning: isAnt && absVal > 15
+      });
+    },
+
+    formatTrunk: function formatTrunk(deg) {
+      const value = clinicalNumber(deg);
+      if (value === null) return emptyClinical();
+      const absVal = Math.abs(value);
+      if (absVal < 1) {
+        return clinicalView({ dir: '垂直', val: '0.0°', text: '垂直 0°', isWarning: false });
+      }
+      const isAnt = value > 0;
+      const label = isAnt ? '前傾' : '後傾';
+      return clinicalView({
+        dir: label,
+        val: absVal.toFixed(1) + '°',
+        text: label + ' ' + absVal.toFixed(1) + '°',
+        isWarning: absVal > 5
+      });
+    },
+
+    formatHip: function formatHip(deg) {
+      const value = clinicalNumber(deg);
+      if (value === null) return emptyClinical();
+      const absVal = Math.abs(value);
+      if (absVal < 1.5) {
+        return clinicalView({ dir: '中間位', val: '0.0°', text: '中間位 0°', isWarning: false });
+      }
+      const isFlex = value > 0;
+      const label = isFlex ? '屈曲' : '伸展';
+      return clinicalView({
+        dir: label,
+        val: absVal.toFixed(1) + '°',
+        text: label + ' ' + absVal.toFixed(1) + '°',
+        isWarning: isFlex && absVal > 10
+      });
+    },
+
+    formatKnee: function formatKnee(deg) {
+      const value = clinicalNumber(deg);
+      if (value === null) return emptyClinical();
+      const absVal = Math.abs(value);
+      if (value < -3) {
+        return clinicalView({
+          dir: '過伸展',
+          val: absVal.toFixed(1) + '°',
+          text: '過伸展 ' + absVal.toFixed(1) + '°',
+          badge: '反張膝 ⚠️',
+          status: 'alert',
+          isWarning: true
+        });
+      }
+      if (value > 5) {
+        return clinicalView({
+          dir: '屈曲',
+          val: absVal.toFixed(1) + '°',
+          text: '屈曲 ' + absVal.toFixed(1) + '°',
+          badge: '屈曲拘縮疑い',
+          status: 'warn',
+          isWarning: true
+        });
+      }
+      return clinicalView({
+        dir: '伸展位',
+        val: absVal.toFixed(1) + '°',
+        text: '伸展位 ' + absVal.toFixed(1) + '°',
+        badge: '正常域',
+        status: 'ok',
+        isWarning: false
+      });
+    }
+  };
+
+  RM.RomFormatter = RM.ClinicalAngleFormatter;
+
   RM.formatKnee = function formatKnee(angle) {
-    const rounded = round1(angle);
-    if (rounded === null) return '—';
-    const text = (rounded > 0 ? '+' : '') + rounded.toFixed(1) + '°';
-    if (rounded < RM.THRESHOLDS.recurvatumDeg) return text + '（反張）';
-    if (rounded > RM.THRESHOLDS.flexionNotableDeg) return text + '（屈曲拘縮疑い）';
-    return text;
+    return RM.ClinicalAngleFormatter.formatKnee(angle).text;
   };
 
   RM.formatKneeJudgement = function formatKneeJudgement(angle) {
-    const rounded = round1(angle);
-    if (rounded === null) return '—';
-    if (rounded < RM.THRESHOLDS.recurvatumDeg) return '反張膝';
-    if (rounded > RM.THRESHOLDS.flexionNotableDeg) return '屈曲拘縮疑い';
-    return '基準範囲';
+    const view = RM.ClinicalAngleFormatter.formatKnee(angle);
+    if (view.val === '—') return '—';
+    return view.badge || view.dir || '—';
   };
 
   RM.formatSignedDeg = function formatSignedDeg(angle) {
-    const rounded = round1(angle);
-    if (rounded === null) return '—';
-    if (rounded === 0) return '0.0°';
-    return (rounded > 0 ? '+' : '') + rounded.toFixed(1) + '°';
+    const value = clinicalNumber(angle);
+    if (value === null) return '—';
+    return Math.abs(value).toFixed(1) + '°';
   };
 
   RM.formatUnsignedDeg = function formatUnsignedDeg(angle) {
@@ -464,7 +617,7 @@
       rom.shoulderDeg = round1(signedBend(shoulder, hip, elbow, facing.facingSign));
     }
     if (pointVisible(shoulder) && pointVisible(elbow) && pointVisible(wrist)) {
-      rom.elbowDeg = round1(elbowFlexion(shoulder, elbow, wrist));
+      rom.elbowDeg = round1(elbowFlexion(shoulder, elbow, wrist, facing.facingSign));
     }
     if (pointVisible(ear) && pointVisible(shoulder)) {
       rom.neckDeg = round1(signedLean(ear, shoulder, facing.facingSign));
@@ -487,10 +640,11 @@
       } else {
         kneeAngleDeg = round1(rawAngle);
         rom.kneeDeg = kneeAngleDeg;
-        if (kneeAngleDeg < RM.THRESHOLDS.recurvatumDeg) {
-          warnings.push('反張膝の基準（−5°未満）に該当します。');
-        } else if (kneeAngleDeg > RM.THRESHOLDS.flexionNotableDeg) {
-          warnings.push('膝屈曲位です。屈曲拘縮が疑われます（+5°超）。');
+        const kneeView = RM.ClinicalAngleFormatter.formatKnee(kneeAngleDeg);
+        if (kneeView.status === 'alert') {
+          warnings.push('反張膝です。過伸展が3°を超えています。');
+        } else if (kneeView.status === 'warn') {
+          warnings.push('膝屈曲位です。屈曲拘縮が疑われます（5°超）。');
         }
       }
     }
@@ -508,7 +662,7 @@
       originX: originX,
       meanVisibility: meanVisibility,
       kneeAngleDeg: kneeAngleDeg,
-      recurvatum: kneeAngleDeg === null ? null : kneeAngleDeg < RM.THRESHOLDS.recurvatumDeg,
+      recurvatum: kneeAngleDeg === null ? null : RM.ClinicalAngleFormatter.formatKnee(kneeAngleDeg).status === 'alert',
       rom: rom,
       points: {
         vertex: vertex,
