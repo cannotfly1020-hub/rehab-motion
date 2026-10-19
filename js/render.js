@@ -2,7 +2,7 @@
   'use strict';
 
   const RM = global.RehabMotion = global.RehabMotion || {};
-  const FONT = '"Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", Meiryo, sans-serif';
+  const FONT = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Hiragino Sans", sans-serif';
 
   RM.hudHitRect = { x: 0, y: 0, width: 0, height: 0 };
 
@@ -20,9 +20,9 @@
   }
 
   function toneColor(tone) {
-    if (tone === 'ok') return '#10b981';
-    if (tone === 'warn') return '#facc15';
-    if (tone === 'alert') return '#ef4444';
+    if (tone === 'ok') return '#34d399';
+    if (tone === 'warn') return '#fbbf24';
+    if (tone === 'alert') return '#f43f5e';
     return '#94a3b8';
   }
 
@@ -97,13 +97,16 @@
   function drawEmptyState(ctx, canvas, scale, message, hint) {
     const centerX = canvas.width / 2;
     ctx.save();
+    ctx.shadowColor = 'rgba(16, 185, 129, 0.4)';
+    ctx.shadowBlur = 8 * scale;
     ctx.setLineDash([6 * scale, 6 * scale]);
     ctx.lineWidth = 2 * scale;
-    ctx.strokeStyle = 'rgba(16, 185, 129, 0.45)';
+    ctx.strokeStyle = '#10b981';
     ctx.beginPath();
     ctx.moveTo(centerX, canvas.height * 0.16);
     ctx.lineTo(centerX, canvas.height * 0.84);
     ctx.stroke();
+    ctx.shadowBlur = 0;
     ctx.setLineDash([]);
     ctx.fillStyle = '#e2e8f0';
     ctx.textAlign = 'center';
@@ -200,89 +203,149 @@
     if (!Number.isFinite(originX)) return;
     ctx.save();
     ctx.lineCap = 'butt';
-    // 画面上で 6px 相当の破線。バッファは devicePixelRatio 倍。
+    // 破線 6px・発光 8px は CSS ピクセル。キャンバスは devicePixelRatio 倍。
+    ctx.shadowColor = 'rgba(16, 185, 129, 0.4)';
+    ctx.shadowBlur = 8 * scale;
     ctx.setLineDash([6 * scale, 6 * scale]);
     ctx.beginPath();
     ctx.moveTo(originX, 0);
     ctx.lineTo(originX, canvas.height);
-    ctx.lineWidth = 4 * scale;
-    ctx.strokeStyle = 'rgba(15, 23, 42, 0.55)';
-    ctx.stroke();
     ctx.lineWidth = 2 * scale;
     ctx.strokeStyle = '#10b981';
     ctx.stroke();
+    ctx.shadowBlur = 0;
     ctx.setLineDash([]);
 
     const label = 'Plum Line';
     ctx.font = '600 ' + Math.round(11 * scale) + 'px ' + FONT;
-    const width = ctx.measureText(label).width + 10 * scale;
-    const height = 16 * scale;
+    const width = ctx.measureText(label).width + 12 * scale;
+    const height = 18 * scale;
     const placeLeft = originX > canvas.width * 0.72;
     const x = Math.max(6 * scale, Math.min(canvas.width - width - 6 * scale, placeLeft ? originX - width - 6 * scale : originX + 6 * scale));
     const y = canvas.height - height - 10 * scale;
-    roundedRect(ctx, x, y, width, height, 4 * scale);
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+    roundedRect(ctx, x, y, width, height, height / 2);
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
     ctx.fill();
-    ctx.fillStyle = '#10b981';
+    ctx.lineWidth = Math.max(1, scale);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.stroke();
+    ctx.fillStyle = '#34d399';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(label, x + width / 2, y + height / 2);
     ctx.restore();
   }
 
+  function splitMeasure(text) {
+    const raw = String(text);
+    const match = raw.match(/^(.*?)(\s*)(cm|°)(.*)$/);
+    if (!match) return { main: raw, unit: '' };
+    return { main: match[1], unit: match[3] + match[4] };
+  }
+
   function drawBadge(ctx, x, y, text, color, scale) {
     ctx.save();
-    ctx.font = '700 ' + Math.round(12 * scale) + 'px ' + FONT;
-    const padX = 6 * scale;
-    const width = ctx.measureText(text).width + padX * 2;
-    const height = 18 * scale;
+    const parts = splitMeasure(text);
+    const mainSize = Math.round(12 * scale);
+    const unitSize = Math.round(9 * scale);
+    ctx.font = '700 ' + mainSize + 'px ' + FONT;
+    const mainWidth = ctx.measureText(parts.main).width;
+    let unitWidth = 0;
+    if (parts.unit) {
+      ctx.font = '620 ' + unitSize + 'px ' + FONT;
+      unitWidth = ctx.measureText(parts.unit).width;
+    }
+    const gap = parts.unit ? 3 * scale : 0;
+    const padX = 8 * scale;
+    const width = mainWidth + gap + unitWidth + padX * 2;
+    const height = 20 * scale;
     const pad = 4 * scale;
     const canvas = ctx.canvas;
     const left = Math.max(pad, Math.min(x - width / 2, canvas.width - width - pad));
     const top = Math.max(pad, Math.min(y - height / 2, canvas.height - height - pad));
-    roundedRect(ctx, left, top, width, height, 5 * scale);
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.86)';
+    roundedRect(ctx, left, top, width, height, height / 2);
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
     ctx.fill();
-    ctx.lineWidth = Math.max(1, 1.5 * scale);
+    ctx.lineWidth = Math.max(1, 1.25 * scale);
     ctx.strokeStyle = color;
     ctx.stroke();
-    ctx.fillStyle = color;
-    ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(text, x, top + height / 2 + 0.5);
+    const textY = top + height / 2 + 0.5;
+    let cursor = left + padX;
+    ctx.font = '700 ' + mainSize + 'px ' + FONT;
+    ctx.fillStyle = color;
+    ctx.textAlign = 'left';
+    ctx.fillText(parts.main, cursor, textY);
+    if (parts.unit) {
+      cursor += mainWidth + gap;
+      ctx.font = '620 ' + unitSize + 'px ' + FONT;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.fillText(parts.unit, cursor, textY + 0.5 * scale);
+    }
     ctx.restore();
   }
 
-  function badgePosition(point, facingSign, scale, canvas) {
-    const anterior = facingSign || 1;
-    const margin = 52 * scale;
-    let x = point.x + anterior * 8 * scale;
-    x = Math.min(canvas.width - margin, Math.max(margin, x));
-    let y = point.y - 16 * scale;
-    if (y < 22 * scale) y = point.y + 18 * scale;
+  function boxesOverlap(a, b, pad) {
+    const bw = b.w != null ? b.w : b.width || 0;
+    const bh = b.h != null ? b.h : b.height || 0;
+    return a.x < b.x + bw + pad && a.x + a.w > b.x - pad
+      && a.y < b.y + bh + pad && a.y + a.h > b.y - pad;
+  }
 
+  function measureBadge(ctx, text, scale) {
+    const parts = splitMeasure(text);
+    ctx.save();
+    ctx.font = '700 ' + Math.round(12 * scale) + 'px ' + FONT;
+    let width = ctx.measureText(parts.main).width;
+    if (parts.unit) {
+      ctx.font = '620 ' + Math.round(9 * scale) + 'px ' + FONT;
+      width += ctx.measureText(parts.unit).width + 3 * scale;
+    }
+    ctx.restore();
+    return {
+      width: width + 16 * scale,
+      height: 20 * scale
+    };
+  }
+
+  function placeBadge(point, size, scale, canvas, placed) {
+    const pad = 4 * scale;
+    const gap = 12 * scale;
+    let x = Math.max(pad + size.width / 2, Math.min(point.x, canvas.width - pad - size.width / 2));
+    let y = point.y - size.height / 2 - gap;
+    const obstacles = [];
     const hud = RM.hudHitRect;
     if (hud && hud.width > 0 && hud.height > 0) {
-      const halfW = 58 * scale;
-      const halfH = 12 * scale;
-      const overlaps = x + halfW > hud.x && x - halfW < hud.x + hud.width
-        && y + halfH > hud.y && y - halfH < hud.y + hud.height;
-      if (overlaps) {
-        const toRight = hud.x + hud.width + halfW + 8 * scale;
-        if (toRight + halfW < canvas.width - 4 * scale) {
-          x = toRight;
-        } else {
-          y = Math.min(canvas.height - 20 * scale, hud.y + hud.height + halfH + 8 * scale);
-          x = Math.min(canvas.width - margin, Math.max(margin, canvas.width - margin));
-        }
-      }
+      obstacles.push({ x: hud.x, y: hud.y, w: hud.width, h: hud.height });
     }
+    (placed || []).forEach(function (box) { obstacles.push(box); });
+
+    function boxAt(cx, cy) {
+      return { x: cx - size.width / 2, y: cy - size.height / 2, w: size.width, h: size.height };
+    }
+    function blocked(cx, cy) {
+      const box = boxAt(cx, cy);
+      if (cy - size.height / 2 < pad || cy + size.height / 2 > canvas.height - pad) return true;
+      const coversPoint = point.x >= box.x && point.x <= box.x + box.w
+        && point.y >= box.y - 2 * scale && point.y <= box.y + box.h + 2 * scale;
+      if (coversPoint) return true;
+      return obstacles.some(function (other) { return boxesOverlap(box, other, 4 * scale); });
+    }
+
+    let guard = 0;
+    while (blocked(x, y) && guard < 12) {
+      y += size.height + 6 * scale;
+      guard += 1;
+    }
+    y = Math.max(pad + size.height / 2, Math.min(canvas.height - pad - size.height / 2, y));
+    if (placed) placed.push(boxAt(x, y));
     return { x: x, y: y };
   }
 
   function drawConnectors(ctx, canvas, alignment, scale) {
     const originX = alignment.originX;
     const joints = [alignment.points.ear, alignment.points.shoulder, alignment.points.hip];
+    const placed = [];
     ctx.save();
     ctx.lineCap = 'round';
     ctx.setLineDash([]);
@@ -303,7 +366,7 @@
         : '—');
       if (typeof point.cm === 'number' || point.visibility < thresholds().minVisibility) {
         const shown = typeof point.cm === 'number' ? text : point.label + ' 視認不足';
-        const at = badgePosition(point, alignment.facingSign, scale, canvas);
+        const at = placeBadge(point, measureBadge(ctx, shown, scale), scale, canvas, placed);
         drawBadge(ctx, at.x, at.y, shown, color, scale);
       }
     });
@@ -311,16 +374,21 @@
     if (alignment.points.knee && alignment.points.knee.visibility >= thresholds().drawVisibility) {
       drawDot(ctx, alignment.points.knee, kneeColor(alignment.kneeAngleDeg), 4.5 * scale, scale);
       if (typeof alignment.kneeAngleDeg === 'number') {
-        const at = badgePosition(alignment.points.knee, alignment.facingSign, scale, canvas);
-        const label = '膝 ' + (typeof RM.formatKnee === 'function'
+        const fullKnee = typeof RM.formatKnee === 'function'
           ? RM.formatKnee(alignment.kneeAngleDeg)
-          : alignment.kneeAngleDeg.toFixed(1) + '°');
+          : alignment.kneeAngleDeg.toFixed(1) + '°';
+        const label = '膝 ' + String(fullKnee).replace(/（[^）]*）$/, '');
+        const at = placeBadge(alignment.points.knee, measureBadge(ctx, label, scale), scale, canvas, placed);
         drawBadge(ctx, at.x, at.y, label, kneeColor(alignment.kneeAngleDeg), scale);
       }
     }
 
     if (alignment.points.ankle) {
-      drawDot(ctx, alignment.points.ankle, '#10b981', 6.2 * scale, scale);
+      ctx.save();
+      ctx.shadowColor = 'rgba(16, 185, 129, 0.4)';
+      ctx.shadowBlur = 8 * scale;
+      drawDot(ctx, alignment.points.ankle, '#34d399', 6.2 * scale, scale);
+      ctx.restore();
     }
     ctx.restore();
   }
@@ -338,9 +406,9 @@
   }
 
   function statusColor(status) {
-    if (status === 'tracking' || status === 'ready') return '#10b981';
-    if (status === 'running' || status === 'loading') return '#facc15';
-    if (status === 'error' || status === 'no-pose') return '#ef4444';
+    if (status === 'tracking' || status === 'ready') return '#34d399';
+    if (status === 'running' || status === 'loading') return '#fbbf24';
+    if (status === 'error' || status === 'no-pose') return '#f43f5e';
     return '#94a3b8';
   }
 
@@ -397,23 +465,26 @@
     const x = 10 * scale;
     const y = 10 * scale;
 
-    roundedRect(ctx, x, y, boxWidth, boxHeight, 8 * scale);
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.84)';
+    roundedRect(ctx, x, y, boxWidth, boxHeight, 10 * scale);
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
     ctx.fill();
+    ctx.lineWidth = Math.max(1, scale);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.stroke();
     ctx.lineWidth = Math.max(1, 1.25 * scale);
-    ctx.strokeStyle = 'rgba(16, 185, 129, 0.85)';
+    ctx.strokeStyle = 'rgba(16, 185, 129, 0.45)';
     ctx.stroke();
 
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     lines.forEach(function (line, index) {
       const isTitle = index === 0;
-      ctx.fillStyle = isTitle ? '#10b981' : '#e2e8f0';
+      ctx.fillStyle = isTitle ? '#34d399' : '#e2e8f0';
       if (!isTitle && line.indexOf('視認性') === 0 && diagnostics.frameCount > 0 && diagnostics.visibility < thresholds().minVisibility) {
-        ctx.fillStyle = '#facc15';
+        ctx.fillStyle = '#fbbf24';
       }
       if (!isTitle && diagnostics.status === 'error' && line === diagnostics.error) {
-        ctx.fillStyle = '#fca5a5';
+        ctx.fillStyle = '#fda4af';
       }
       ctx.fillText(line, x + padX, y + padY + lineHeight * index + lineHeight / 2);
     });
@@ -444,7 +515,7 @@
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#0b1120';
+    ctx.fillStyle = '#060911';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     let drewMedia = false;

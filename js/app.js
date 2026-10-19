@@ -165,11 +165,31 @@
       }
     }
 
+    function paintMeasure(node, text) {
+      const raw = String(text);
+      if (node.dataset.raw === raw) return;
+      node.dataset.raw = raw;
+      node.textContent = '';
+      const match = raw.match(/^(.*?)(\s*)(cm|°)(.*)$/);
+      if (!match) {
+        node.textContent = raw;
+        return;
+      }
+      const num = document.createElement('span');
+      num.className = 'num';
+      num.textContent = match[1];
+      const unit = document.createElement('span');
+      unit.className = 'unit';
+      unit.textContent = match[3] + match[4];
+      node.appendChild(num);
+      node.appendChild(unit);
+    }
+
     function setMetric(id, text, tone) {
       const node = document.getElementById(id);
       if (!node) return;
       const value = node.querySelector('.metric-value');
-      if (value && value.textContent !== text) value.textContent = text;
+      if (value) paintMeasure(value, text);
       if (node.dataset.tone !== tone) node.dataset.tone = tone;
     }
 
@@ -186,7 +206,8 @@
         setMetric('metric-ear', RM.formatDeviation(alignment.points.ear.cm), RM.deviationTone(alignment.points.ear.cm));
         setMetric('metric-shoulder', RM.formatDeviation(alignment.points.shoulder.cm), RM.deviationTone(alignment.points.shoulder.cm));
         setMetric('metric-hip', RM.formatDeviation(alignment.points.hip.cm), RM.deviationTone(alignment.points.hip.cm));
-        setMetric('metric-knee', RM.formatKnee(alignment.kneeAngleDeg), RM.kneeTone(alignment.kneeAngleDeg));
+        const kneeText = String(RM.formatKnee(alignment.kneeAngleDeg)).replace(/（[^）]*）$/, '');
+        setMetric('metric-knee', kneeText, RM.kneeTone(alignment.kneeAngleDeg));
         if (judge) judge.textContent = RM.formatKneeJudgement(alignment.kneeAngleDeg);
       }
       updateNotes();
@@ -366,6 +387,7 @@
     function goToStep(step) {
       if (step < 1 || step > 3) return;
       if ((step === 2 || step === 3) && state.mode === 'empty') return;
+      document.documentElement.setAttribute('data-step-dir', step >= state.step ? 'forward' : 'back');
       state.step = step;
       [1, 2, 3].forEach(function (number) {
         const view = document.getElementById('step-' + number);
