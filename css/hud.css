@@ -1,0 +1,117 @@
+.side-hud {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  gap: 6px;
+  width: min(22%, 108px, max(var(--pillar, 0px), 64px));
+  pointer-events: none;
+}
+
+.side-hud-left { left: 0; padding-top: 64px; }
+.side-hud-right { right: 0; }
+
+.hud-metric {
+  min-width: 0;
+  max-width: 100%;
+  padding: 5px 6px;
+  border-radius: 10px;
+  text-align: center;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.hud-name,
+.hud-dir {
+  display: block;
+  line-height: 1.15;
+}
+
+.hud-name {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.hud-dir {
+  min-height: 1.1em;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.hud-metric .metric-value {
+  margin: 1px 0 0;
+  font-size: clamp(0.78rem, 3.2vw, 0.95rem);
+  line-height: 1.1;
+}
+
+.hud-metric .metric-sub {
+  min-height: 0;
+  font-size: 9px;
+  line-height: 1.2;
+}
+
+.hud-metric .metric-sub:empty { display: none; }
+
+.hud-metric[data-tone="ok"] { box-shadow: inset 2px 0 0 var(--ok); }
+.hud-metric[data-tone="warn"] { box-shadow: inset 2px 0 0 var(--warn); }
+.hud-metric[data-tone="alert"] { box-shadow: inset 2px 0 0 var(--alert); }
+.hud-metric[data-tone="ok"] .hud-dir,
+.hud-metric[data-tone="ok"] .metric-value { color: var(--ok); }
+.hud-metric[data-tone="warn"] .hud-dir,
+.hud-metric[data-tone="warn"] .metric-value,
+.hud-metric[data-tone="warn"] .metric-sub { color: var(--warn); }
+.hud-metric[data-tone="alert"] .hud-dir,
+.hud-metric[data-tone="alert"] .metric-value,
+.hud-metric[data-tone="alert"] .metric-sub { color: var(--alert); }
+
+.plane-toggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  padding: 2px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.plane-key {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.62);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  min-height: 28px;
+  padding: 2px 10px;
+  white-space: nowrap;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.plane-key.is-active {
+  background: rgba(16, 185, 129, 0.22);
+  color: #34d399;
+}
+
+.hud-set {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 6px;
+}
+
+.screen-wrapper[data-plane="frontal"] .hud-sagittal,
+.screen-wrapper:not([data-plane="frontal"]) .hud-frontal {
+  display: none;
+}
