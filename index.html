@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="format-detection" content="telephone=no">
-  <title>RehabMotion - 矢状面姿勢アライメント</title>
+  <title>RehabMotion - 姿勢アライメント AI解析</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23090d16'/%3E%3Cpath d='M8 1.6v12.8' stroke='%2310b981' stroke-width='1.4' stroke-dasharray='2.2 1.6' stroke-linecap='round'/%3E%3Ccircle cx='8' cy='4.2' r='1.1' fill='%2334d399'/%3E%3Ccircle cx='8' cy='8' r='1.1' fill='%2334d399'/%3E%3Ccircle cx='8' cy='11.6' r='1.1' fill='%2334d399'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="css/style.css">
 </head>
@@ -19,7 +19,7 @@
         <button type="button" id="btn-header-back" class="btn btn-ghost" hidden>戻る</button>
         <h1>
           <span class="brand">RehabMotion</span>
-          <span class="brand-sub">矢状面姿勢アライメント</span>
+          <span class="brand-sub">姿勢アライメント AI解析</span>
         </h1>
         <button type="button" id="btn-retake" class="btn btn-ghost" hidden>再撮影</button>
       </div>
@@ -34,41 +34,64 @@
       <section id="step-1" class="step-view is-active" aria-labelledby="step-1-title">
         <p class="eyebrow">Step 1 · Acquire</p>
         <h2 id="step-1-title">メディア取得</h2>
-        <p class="lead">横向き（矢状面）の立位を、この端末の中だけで解析します。</p>
+        <p class="lead">正面・側面どちらの撮影でもAIが自動判別して即座に測定します。</p>
+        <p class="guide-line">全身（頭部から足先まで）が画面に収まるように撮影・選択してください。</p>
 
-        <div class="finder" aria-label="矢状面撮影のガイド">
+        <div class="finder" aria-label="正面と側面の撮影ガイド">
           <div class="finder-frame">
             <svg class="finder-grid" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
               <path d="M33.33 0 V100 M66.67 0 V100 M0 33.33 H100 M0 66.67 H100"></path>
             </svg>
-            <svg class="finder-figure" viewBox="0 0 160 280" fill="none" aria-hidden="true">
-              <line class="finder-plum" x1="86" y1="14" x2="86" y2="266"></line>
-              <circle cx="74" cy="36" r="15"></circle>
-              <circle class="finder-joint" cx="88" cy="34" r="2.4"></circle>
-              <path d="M74 51 V68 M52 78 H78 M74 68 V118 M74 118 C68 152 76 170 82 178 L86 214 M86 214 L68 230 H108"></path>
-              <circle class="finder-joint" cx="52" cy="78" r="2.4"></circle>
-              <circle class="finder-joint" cx="74" cy="118" r="2.4"></circle>
-              <circle class="finder-joint" cx="82" cy="178" r="2.4"></circle>
-              <circle class="finder-joint finder-ankle" cx="86" cy="214" r="3"></circle>
-            </svg>
+            <div class="finder-figures" aria-hidden="true">
+              <svg class="finder-figure" viewBox="0 0 160 280" fill="none">
+                <text x="80" y="28" text-anchor="middle">側面</text>
+                <line class="finder-plum" x1="86" y1="32" x2="86" y2="266"></line>
+                <circle cx="74" cy="52" r="14"></circle>
+                <circle class="finder-joint" cx="88" cy="50" r="2.4"></circle>
+                <path d="M74 66 V82 M52 92 H78 M74 82 V132 M74 132 C68 164 76 182 82 190 L86 224 M86 224 L68 240 H108"></path>
+                <circle class="finder-joint" cx="52" cy="92" r="2.4"></circle>
+                <circle class="finder-joint" cx="74" cy="132" r="2.4"></circle>
+                <circle class="finder-joint" cx="82" cy="190" r="2.4"></circle>
+                <circle class="finder-joint finder-ankle" cx="86" cy="224" r="3"></circle>
+              </svg>
+              <svg class="finder-figure" viewBox="0 0 160 280" fill="none">
+                <text x="80" y="28" text-anchor="middle">正面</text>
+                <line class="finder-plum" x1="80" y1="32" x2="80" y2="258"></line>
+                <circle cx="80" cy="52" r="14"></circle>
+                <path d="M46 92 H114 M80 66 V138 M48 138 H112 M48 138 L44 186 L50 236 M112 138 L116 186 L110 236 M32 236 H66 M94 236 H128"></path>
+                <circle class="finder-joint" cx="46" cy="92" r="2.4"></circle>
+                <circle class="finder-joint" cx="114" cy="92" r="2.4"></circle>
+                <circle class="finder-joint" cx="48" cy="138" r="2.4"></circle>
+                <circle class="finder-joint" cx="112" cy="138" r="2.4"></circle>
+                <circle class="finder-joint" cx="44" cy="186" r="2.4"></circle>
+                <circle class="finder-joint" cx="116" cy="186" r="2.4"></circle>
+                <circle class="finder-joint finder-ankle" cx="50" cy="236" r="3"></circle>
+                <circle class="finder-joint finder-ankle" cx="110" cy="236" r="3"></circle>
+              </svg>
+            </div>
             <i class="bracket bracket-tl"></i>
             <i class="bracket bracket-tr"></i>
             <i class="bracket bracket-bl"></i>
             <i class="bracket bracket-br"></i>
-            <p class="finder-chip">SAGITTAL · FULL BODY</p>
+            <p class="finder-chip">AI 自動判別</p>
           </div>
-          <ol class="finder-notes">
-            <li>頭の先から足先まで、真横でフレームに入れる。</li>
-            <li>カメラは床と水平。体はできるだけ鉛直にする。</li>
-            <li>手前の耳・肩・股・膝・外果と、つま先・踵が見える明るさにする。</li>
-          </ol>
+          <div class="mode-board" role="list">
+            <article class="mode-card" role="listitem">
+              <p class="mode-name">🧍‍♂️ 側面モード</p>
+              <p class="mode-metrics">ケンダル理想重心線、頭部前方位、巻き肩、反張膝</p>
+            </article>
+            <article class="mode-card" role="listitem">
+              <p class="mode-name">🧍 正面モード</p>
+              <p class="mode-metrics">肩・骨盤の水平傾斜、正中線重心偏位、O脚/X脚（内外反）</p>
+            </article>
+          </div>
         </div>
 
         <div class="media-cards">
           <label class="media-card media-card-camera">
             <span class="card-kicker">Capture</span>
             <span class="card-title">カメラで撮影</span>
-            <span class="card-sub">背面カメラを起動し、矢状面の全身を撮る</span>
+            <span class="card-sub">背面カメラを起動し、正面または側面の全身を撮る</span>
             <input id="camera-input" type="file" accept="image/*" capture="environment">
           </label>
           <div class="media-card media-card-gallery">

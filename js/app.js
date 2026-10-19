@@ -846,7 +846,7 @@
       clearAnalysis();
       syncTransport();
       updateSourceLabel();
-      setPickStatus('矢状面の全身が写る写真または動画を選んでください。');
+      setPickStatus('正面または側面の全身が写る写真または動画を選んでください。');
       goToStep(1);
     }
 
@@ -954,7 +954,7 @@
     function refreshModelStatus() {
       if (state.step !== 1 || state.mode !== 'empty') return;
       if (RM.aiDiagnostics.status === 'ready') {
-        setPickStatus('準備完了。矢状面の全身を撮影するか、ファイルを選んでください。', 'ok');
+        setPickStatus('準備完了。正面または側面の全身を撮影するか、ファイルを選んでください。', 'ok');
       } else if (RM.aiDiagnostics.status === 'error') {
         setPickStatus(RM.aiDiagnostics.error || 'モデルを初期化できませんでした。', 'alert');
       } else {
