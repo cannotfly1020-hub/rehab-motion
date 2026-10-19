@@ -64,6 +64,7 @@
 
     video.playsInline = true;
     video.muted = true;
+    video.preload = 'auto';
 
     const state = {
       step: 1,
@@ -83,7 +84,8 @@
       swaySamples: [],
       swayTarget: 'ear',
       swayPlot: null,
-      swayScrubbing: false
+      swayScrubbing: false,
+      openingSeek: false
     };
 
     function readStoredHeight() {
@@ -573,6 +575,7 @@
 
     function clearVideo() {
       state.videoEpoch += 1;
+      state.openingSeek = false;
       stopLoop();
       video.pause();
       video.removeAttribute('src');
@@ -612,13 +615,56 @@
       return true;
     }
 
+    function renderVideoFrame() {
+      if (state.mode !== 'video' || state.step !== 3) return;
+      resizeCanvas();
+      renderFrameOnly();
+      if (video.readyState >= 2 && video.videoWidth > 0) requestPose(video);
+    }
+
+    function nudgeOpeningFrame() {
+      if (state.mode !== 'video' || !video.paused) return;
+      video.preload = 'auto';
+      if (video.readyState < 1) return;
+      const time = Number(video.currentTime);
+      const nearStart = !Number.isFinite(time) || time < 0.0005;
+      if (!nearStart) {
+        renderVideoFrame();
+        return;
+      }
+      const duration = Number(video.duration);
+      const target = Number.isFinite(duration) && duration > 0.002 ? 0.001 : 0;
+      if (!(target > 0) || Math.abs(time - target) < 0.0001) {
+        renderVideoFrame();
+        return;
+      }
+      if (state.openingSeek) return;
+      state.openingSeek = true;
+      const epoch = state.videoEpoch;
+      try {
+        video.currentTime = target;
+      } catch (error) {
+        state.openingSeek = false;
+        renderVideoFrame();
+        return;
+      }
+      global.setTimeout(function () {
+        if (epoch !== state.videoEpoch) return;
+        state.openingSeek = false;
+        renderVideoFrame();
+      }, 480);
+    }
+
     function beginAnalysis() {
       global.requestAnimationFrame(function () {
         global.requestAnimationFrame(function () {
           resizeCanvas();
+          if (state.mode === 'video') {
+            nudgeOpeningFrame();
+            return;
+          }
           if (state.rawLandmarks) recomputeAlignment();
           else renderFrameOnly();
-          if (state.mode === 'video') requestPose(video);
           if (state.mode === 'image') requestPose(still);
         });
       });
@@ -706,6 +752,7 @@
         goToStep(1);
       };
       video.addEventListener('error', onError);
+      video.preload = 'auto';
       video.src = url;
       syncTransport();
       updateSourceLabel();
@@ -867,18 +914,18 @@
     video.addEventListener('loadeddata', function () {
       if (state.mode !== 'video') return;
       onMediaReady();
-      if (state.step === 3) {
-        resizeCanvas();
-        renderFrameOnly();
-        requestPose(video);
-      }
+      nudgeOpeningFrame();
+    });
+    video.addEventListener('canplay', function () {
+      if (state.mode !== 'video' || state.step !== 3 || !video.paused) return;
+      nudgeOpeningFrame();
     });
     video.addEventListener('seeked', function () {
-      if (state.mode !== 'video' || state.step !== 3) return;
+      if (state.mode !== 'video') return;
+      state.openingSeek = false;
       updateSeek();
       updateTimeLabel();
-      renderFrameOnly();
-      requestPose(video);
+      renderVideoFrame();
     });
 
     function takeFile(input, loader) {
