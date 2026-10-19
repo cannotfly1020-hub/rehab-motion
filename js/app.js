@@ -786,6 +786,9 @@
       observer.observe(wrapper);
     }
     global.addEventListener('resize', resizeCanvas);
+    if (global.visualViewport) {
+      global.visualViewport.addEventListener('resize', resizeCanvas);
+    }
     global.addEventListener('orientationchange', function () {
       global.setTimeout(resizeCanvas, 200);
     });
