@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1120">
+  <meta name="color-scheme" content="light dark">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="format-detection" content="telephone=no">
+  <title>RehabMotion - 矢状面姿勢アライメント</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%2310b981'/%3E%3Cpath d='M8 1.5v13M4.5 4.5h3.5M4.5 8h3.5M4.5 11.5h3.5' stroke='white' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="site-header">
+      <div class="header-bar">
+        <button type="button" id="btn-header-back" class="btn btn-ghost" hidden>戻る</button>
+        <h1>🧍 RehabMotion - 矢状面姿勢アライメント</h1>
+        <button type="button" id="btn-retake" class="btn btn-ghost" hidden>再撮影</button>
+      </div>
+      <ol class="stepper" aria-label="手順">
+        <li id="stepper-1" aria-current="step">1 撮影</li>
+        <li id="stepper-2">2 身長</li>
+        <li id="stepper-3">3 解析</li>
+      </ol>
+    </header>
+
+    <main>
+      <section id="step-1" class="step-view is-active" aria-labelledby="step-1-title">
+        <p class="eyebrow">Step 1</p>
+        <h2 id="step-1-title">メディア取得</h2>
+        <p class="lead">横向き（矢状面）の立位を、この端末の中だけで解析します。</p>
+
+        <div class="guide" aria-label="矢状面撮影のガイド">
+          <h3>撮影ガイド</h3>
+          <ol>
+            <li>被験者の真横に立ち、頭の先から足先までフレームに入れる。</li>
+            <li>カメラは床と水平。体はできるだけ鉛直にする。</li>
+            <li>手前の耳・肩・股・膝・外果と、つま先・踵が見える明るさにする。</li>
+          </ol>
+        </div>
+
+        <div class="action-stack">
+          <label class="btn btn-primary btn-block">
+            カメラで撮影
+            <input id="camera-input" type="file" accept="image/*" capture="environment">
+          </label>
+          <label class="btn btn-block">
+            写真を選択
+            <input id="image-input" type="file" accept="image/jpeg,image/png,image/webp,image/*">
+          </label>
+          <label class="btn btn-block">
+            動画を選択
+            <input id="video-input" type="file" accept="video/mp4,video/quicktime,video/webm,video/*">
+          </label>
+        </div>
+        <p id="pick-status" class="pick-status" role="status">モデルを準備しています…</p>
+      </section>
+
+      <section id="step-2" class="step-view" hidden aria-labelledby="step-2-title">
+        <p class="eyebrow">Step 2</p>
+        <h2 id="step-2-title">身長入力</h2>
+        <p class="lead">頭頂から外果までを身長の 94% として、偏位を cm に換算します。</p>
+        <p id="media-name" class="media-name">メディア未選択</p>
+
+        <div class="height-panel">
+          <label class="height-unit" for="height-input">
+            <input id="height-input" class="height-readout" type="number" inputmode="decimal" min="50" max="250" step="1" value="160" autocomplete="off">
+            <span>cm</span>
+          </label>
+          <input id="height-slider" type="range" min="50" max="250" step="1" value="160" aria-label="身長スライダー">
+          <div class="nudge-row" aria-label="身長の微調整">
+            <button type="button" class="btn" data-height-delta="-5">−5</button>
+            <button type="button" class="btn" data-height-delta="-1">−1</button>
+            <button type="button" class="btn" data-height-delta="1">+1</button>
+            <button type="button" class="btn" data-height-delta="5">+5</button>
+          </div>
+        </div>
+
+        <button type="button" id="btn-start" class="btn btn-primary btn-block">解析を開始する</button>
+      </section>
+
+      <section id="step-3" class="step-view" hidden aria-labelledby="step-3-title">
+        <h2 id="step-3-title" class="visually-hidden">姿勢アライメント解析</h2>
+        <p id="source-label" class="source-label">メディア未選択</p>
+
+        <div class="screen-wrapper" id="screen-wrapper">
+          <video
+            id="video"
+            class="media-source"
+            playsinline
+            webkit-playsinline
+            muted
+            preload="metadata"
+            aria-hidden="true"
+          ></video>
+          <img id="still" class="media-source" alt="" aria-hidden="true">
+          <canvas
+            id="overlay"
+            width="640"
+            height="480"
+            aria-label="矢状面姿勢アライメント。左上をタップするとAI認識ステータスの表示を切り替えます。"
+          ></canvas>
+        </div>
+
+        <div class="bottom-panel">
+          <div class="transport" aria-label="動画操作">
+            <button type="button" id="btn-step-back" aria-label="1コマ戻す" disabled>−1F</button>
+            <button type="button" id="btn-play" aria-pressed="false" disabled>再生</button>
+            <button type="button" id="btn-step-forward" aria-label="1コマ進める" disabled>+1F</button>
+            <input id="seek-bar" type="range" min="0" max="1000" value="0" step="1" aria-label="再生位置" disabled>
+            <span id="time-label" class="time-label">00:00 / 00:00</span>
+          </div>
+
+          <section class="summary" aria-label="臨床指標サマリー">
+            <div class="summary-head">
+              <h3>臨床指標</h3>
+              <p class="legend">
+                <span class="swatch swatch-ok" aria-hidden="true"></span>±1.5 cm
+                <span class="swatch swatch-warn" aria-hidden="true"></span>3.0 cmまで
+                <span class="swatch swatch-alert" aria-hidden="true"></span>3.0 cm超
+                ／ 膝 −5°未満は反張膝、+5°超は屈曲拘縮疑い
+              </p>
+            </div>
+            <div class="metrics">
+              <article class="metric" id="metric-ear" data-tone="none">
+                <h3>耳垂偏位</h3>
+                <p class="metric-value">—</p>
+              </article>
+              <article class="metric" id="metric-shoulder" data-tone="none">
+                <h3>肩峰偏位</h3>
+                <p class="metric-value">—</p>
+              </article>
+              <article class="metric" id="metric-hip" data-tone="none">
+                <h3>大転子偏位</h3>
+                <p class="metric-value">—</p>
+              </article>
+              <article class="metric" id="metric-knee" data-tone="none">
+                <h3>膝角度 / 反張膝</h3>
+                <p class="metric-value">—</p>
+                <p class="metric-sub" id="metric-knee-judge">—</p>
+              </article>
+            </div>
+            <p id="measure-note" class="measure-note">画像の上下を鉛直とみなします。参考表示であり、診断は有資格者が行ってください。</p>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+  <noscript>JavaScriptを有効にしてください。姿勢推定と数値計算はこの端末内で完結します。</noscript>
+
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+  <script src="js/mediapipe.js"></script>
+  <script src="js/math.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
