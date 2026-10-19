@@ -288,7 +288,7 @@
     const left = Math.max(pad, Math.min(x - width / 2, canvas.width - width - pad));
     const top = Math.max(pad, Math.min(y - height / 2, canvas.height - height - pad));
     roundedRect(ctx, left, top, width, height, height / 2);
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+    ctx.fillStyle = 'rgba(6, 9, 17, 0.94)';
     ctx.fill();
     ctx.lineWidth = Math.max(1, 1.25 * scale);
     ctx.strokeStyle = color;
@@ -405,11 +405,6 @@
 
     if (alignment.points.knee && alignment.points.knee.visibility >= thresholds().drawVisibility) {
       drawDot(ctx, alignment.points.knee, kneeColor(alignment.kneeAngleDeg), 4.5 * scale, scale);
-      if (typeof alignment.kneeAngleDeg === 'number') {
-        const label = clinicalKneeLabel(alignment.kneeAngleDeg);
-        const at = placeBadge(alignment.points.knee, measureBadge(ctx, label, scale), scale, canvas, placed);
-        drawBadge(ctx, at.x, at.y, label, kneeColor(alignment.kneeAngleDeg), scale);
-      }
     }
 
     if (alignment.points.ankle) {
@@ -418,6 +413,13 @@
       ctx.shadowBlur = 8 * scale;
       drawDot(ctx, alignment.points.ankle, '#34d399', 6.2 * scale, scale);
       ctx.restore();
+    }
+
+    if (alignment.points.knee && alignment.points.knee.visibility >= thresholds().drawVisibility
+      && typeof alignment.kneeAngleDeg === 'number') {
+      const label = clinicalKneeLabel(alignment.kneeAngleDeg);
+      const at = placeBadge(alignment.points.knee, measureBadge(ctx, label, scale), scale, canvas, placed);
+      drawBadge(ctx, at.x, at.y, label, kneeColor(alignment.kneeAngleDeg), scale);
     }
     ctx.restore();
   }

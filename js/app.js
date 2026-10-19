@@ -210,12 +210,9 @@
         setMetric('metric-shoulder', RM.formatDeviation(alignment.points.shoulder.cm), RM.deviationTone(alignment.points.shoulder.cm));
         setMetric('metric-hip', RM.formatDeviation(alignment.points.hip.cm), RM.deviationTone(alignment.points.hip.cm));
         const kneeView = RM.ClinicalAngleFormatter.formatKnee(alignment.kneeAngleDeg);
-        setMetric('metric-knee', kneeView.val, RM.kneeTone(alignment.kneeAngleDeg));
+        setMetric('metric-knee', kneeView.text, RM.kneeTone(alignment.kneeAngleDeg));
         if (judge) {
-          const sub = kneeView.val === '—'
-            ? '—'
-            : (kneeView.badge ? kneeView.dir + ' · ' + kneeView.badge : kneeView.dir);
-          judge.textContent = sub || '—';
+          judge.textContent = kneeView.val === '—' ? '—' : (kneeView.badge || '');
         }
       }
       updateRom();

@@ -434,33 +434,36 @@
       const value = clinicalNumber(deg);
       if (value === null) return emptyClinical();
       const absVal = Math.abs(value);
-      if (value < -3) {
+      // 計測誤差 ±2° 以内は基本軸。符号は出さず 0° とする。
+      if (absVal <= 2) {
+        return clinicalView({
+          dir: '伸展位',
+          val: '0.0°',
+          text: '伸展位 0°',
+          badge: '',
+          status: 'ok',
+          isWarning: false
+        });
+      }
+      if (value < 0) {
+        const alert = absVal > 3;
         return clinicalView({
           dir: '過伸展',
           val: absVal.toFixed(1) + '°',
           text: '過伸展 ' + absVal.toFixed(1) + '°',
-          badge: '反張膝 ⚠️',
-          status: 'alert',
-          isWarning: true
+          badge: alert ? '反張膝 ⚠️' : '',
+          status: alert ? 'alert' : 'ok',
+          isWarning: alert
         });
       }
-      if (value > 5) {
-        return clinicalView({
-          dir: '屈曲',
-          val: absVal.toFixed(1) + '°',
-          text: '屈曲 ' + absVal.toFixed(1) + '°',
-          badge: '屈曲拘縮疑い',
-          status: 'warn',
-          isWarning: true
-        });
-      }
+      const warn = absVal > 5;
       return clinicalView({
-        dir: '伸展位',
+        dir: '屈曲',
         val: absVal.toFixed(1) + '°',
-        text: '伸展位 ' + absVal.toFixed(1) + '°',
-        badge: '正常域',
-        status: 'ok',
-        isWarning: false
+        text: '屈曲 ' + absVal.toFixed(1) + '°',
+        badge: warn ? '屈曲拘縮疑い' : '',
+        status: warn ? 'warn' : 'ok',
+        isWarning: warn
       });
     }
   };
