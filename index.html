@@ -170,66 +170,6 @@
               <p class="metric-value tabular-nums">—</p>
             </article>
           </aside>
-          <div id="rom-drawer" class="rom-drawer" aria-hidden="true">
-            <div class="rom-drawer-inner">
-              <div class="rom-panel">
-                <div class="rom-head">
-                  <h3>可動域（ROM）詳細</h3>
-                  <button type="button" id="btn-rom-close" class="btn btn-ghost">閉じる</button>
-                </div>
-                <p id="rom-side" class="rom-side">手前側の腕と体幹を計測します。</p>
-
-                <section class="rom-group" aria-label="上肢">
-                  <h4>上肢 <span>Upper Limb</span></h4>
-                  <div class="rom-item" data-tone="none">
-                    <span class="rom-joint">肩関節</span>
-                    <span class="rom-dir" id="rom-shoulder-dir"></span>
-                    <span class="rom-value tabular-nums" id="rom-shoulder">—</span>
-                    <span class="rom-badge" id="rom-shoulder-badge"></span>
-                  </div>
-                  <div class="rom-item" data-tone="none">
-                    <span class="rom-joint">肘関節</span>
-                    <span class="rom-dir" id="rom-elbow-dir"></span>
-                    <span class="rom-value tabular-nums" id="rom-elbow">—</span>
-                    <span class="rom-badge" id="rom-elbow-badge"></span>
-                  </div>
-                </section>
-
-                <section class="rom-group" aria-label="体幹・頚部">
-                  <h4>体幹・頚部 <span>Trunk &amp; Neck</span></h4>
-                  <div class="rom-item" data-tone="none">
-                    <span class="rom-joint">頚部</span>
-                    <span class="rom-dir" id="rom-neck-dir"></span>
-                    <span class="rom-value tabular-nums" id="rom-neck">—</span>
-                    <span class="rom-badge" id="rom-neck-badge"></span>
-                  </div>
-                  <div class="rom-item" data-tone="none">
-                    <span class="rom-joint">体幹</span>
-                    <span class="rom-dir" id="rom-trunk-dir"></span>
-                    <span class="rom-value tabular-nums" id="rom-trunk">—</span>
-                    <span class="rom-badge" id="rom-trunk-badge"></span>
-                  </div>
-                </section>
-
-                <section class="rom-group" aria-label="下肢">
-                  <h4>下肢 <span>Lower Limb</span></h4>
-                  <div class="rom-item" data-tone="none">
-                    <span class="rom-joint">股関節</span>
-                    <span class="rom-dir" id="rom-hip-dir"></span>
-                    <span class="rom-value tabular-nums" id="rom-hip">—</span>
-                    <span class="rom-badge" id="rom-hip-badge"></span>
-                  </div>
-                  <div class="rom-item" data-tone="none">
-                    <span class="rom-joint">膝関節</span>
-                    <span class="rom-dir" id="rom-knee-dir"></span>
-                    <span class="rom-value tabular-nums" id="rom-knee">—</span>
-                    <span class="rom-badge" id="rom-knee-badge"></span>
-                  </div>
-                </section>
-                <p class="rom-note">矢状面の参考値です。再生やシークはそのまま続けられます。</p>
-              </div>
-            </div>
-          </div>
         </div>
 
         <div class="bottom-panel">
@@ -251,6 +191,66 @@
             <button type="button" id="btn-rom" class="btn rom-toggle" aria-expanded="false" aria-controls="rom-drawer">ROM</button>
           </div>
           <p id="measure-note" class="measure-note visually-hidden">画像の上下を鉛直とみなします。参考表示であり、診断は有資格者が行ってください。</p>
+        </div>
+        <div id="rom-drawer" class="rom-drawer" aria-hidden="true">
+          <div class="rom-drawer-inner">
+            <div class="rom-panel">
+              <div class="rom-head">
+                <h3>可動域（ROM）詳細</h3>
+                <button type="button" id="btn-rom-close" class="btn btn-ghost">閉じる</button>
+              </div>
+              <p id="rom-side" class="rom-side">手前側の腕と体幹を計測します。</p>
+
+              <section class="rom-group" aria-label="上肢">
+                <h4>上肢 <span>Upper Limb</span></h4>
+                <div class="rom-item" data-tone="none">
+                  <span class="rom-joint">肩関節</span>
+                  <span class="rom-dir" id="rom-shoulder-dir"></span>
+                  <span class="rom-value tabular-nums" id="rom-shoulder">—</span>
+                  <span class="rom-badge" id="rom-shoulder-badge"></span>
+                </div>
+                <div class="rom-item" data-tone="none">
+                  <span class="rom-joint">肘関節</span>
+                  <span class="rom-dir" id="rom-elbow-dir"></span>
+                  <span class="rom-value tabular-nums" id="rom-elbow">—</span>
+                  <span class="rom-badge" id="rom-elbow-badge"></span>
+                </div>
+              </section>
+
+              <section class="rom-group" aria-label="体幹・頚部">
+                <h4>体幹・頚部 <span>Trunk &amp; Neck</span></h4>
+                <div class="rom-item" data-tone="none">
+                  <span class="rom-joint">頚部</span>
+                  <span class="rom-dir" id="rom-neck-dir"></span>
+                  <span class="rom-value tabular-nums" id="rom-neck">—</span>
+                  <span class="rom-badge" id="rom-neck-badge"></span>
+                </div>
+                <div class="rom-item" data-tone="none">
+                  <span class="rom-joint">体幹</span>
+                  <span class="rom-dir" id="rom-trunk-dir"></span>
+                  <span class="rom-value tabular-nums" id="rom-trunk">—</span>
+                  <span class="rom-badge" id="rom-trunk-badge"></span>
+                </div>
+              </section>
+
+              <section class="rom-group" aria-label="下肢">
+                <h4>下肢 <span>Lower Limb</span></h4>
+                <div class="rom-item" data-tone="none">
+                  <span class="rom-joint">股関節</span>
+                  <span class="rom-dir" id="rom-hip-dir"></span>
+                  <span class="rom-value tabular-nums" id="rom-hip">—</span>
+                  <span class="rom-badge" id="rom-hip-badge"></span>
+                </div>
+                <div class="rom-item" data-tone="none">
+                  <span class="rom-joint">膝関節</span>
+                  <span class="rom-dir" id="rom-knee-dir"></span>
+                  <span class="rom-value tabular-nums" id="rom-knee">—</span>
+                  <span class="rom-badge" id="rom-knee-badge"></span>
+                </div>
+              </section>
+              <p class="rom-note">矢状面の参考値です。再生やシークはそのまま続けられます。</p>
+            </div>
+          </div>
         </div>
       </section>
     </main>

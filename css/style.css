@@ -950,41 +950,40 @@ input:focus-visible {
 }
 
 .rom-drawer {
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: 8px;
-  z-index: 5;
+  position: fixed;
+  left: max(8px, var(--safe-left));
+  right: max(8px, var(--safe-right));
+  bottom: 0;
+  z-index: 30;
   max-height: 0;
   overflow: hidden;
   opacity: 0;
   pointer-events: none;
-  transform: translateY(18px);
-  transition:
-    max-height 380ms var(--ease),
-    opacity 280ms var(--ease),
-    transform 380ms var(--ease);
+  transition: opacity 280ms var(--ease);
 }
 
 .rom-drawer.is-open {
-  max-height: 46%;
-  max-height: min(42dvh, 46%);
+  max-height: none;
+  overflow: visible;
   opacity: 1;
   pointer-events: auto;
-  transform: translateY(0);
 }
 
 .rom-drawer-inner {
-  overflow: hidden;
+  overflow: visible;
+  height: auto;
 }
 
 .rom-panel {
-  max-height: 42vh;
-  max-height: min(42dvh, 100%);
+  max-height: 65vh;
+  max-height: min(65vh, calc(100dvh - 120px));
   margin-top: 0;
   padding: 10px 12px calc(10px + var(--safe-bottom));
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto !important;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y !important;
+  overscroll-behavior-y: contain;
   border-radius: 16px 16px 0 0;
   background: rgba(15, 23, 42, 0.78);
   border: 1px solid rgba(255, 255, 255, 0.1);
