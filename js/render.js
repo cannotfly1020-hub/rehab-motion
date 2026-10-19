@@ -223,7 +223,7 @@
     ctx.stroke();
   }
 
-  function drawPlumbLine(ctx, canvas, originX, scale) {
+  function drawPlumbLine(ctx, canvas, originX, scale, caption) {
     if (!Number.isFinite(originX)) return;
     ctx.save();
     ctx.lineCap = 'butt';
@@ -240,7 +240,7 @@
     ctx.shadowBlur = 0;
     ctx.setLineDash([]);
 
-    const label = 'Plum Line';
+    const label = caption || 'Plum Line';
     ctx.font = '600 ' + Math.round(11 * scale) + 'px ' + FONT;
     const width = ctx.measureText(label).width + 12 * scale;
     const height = 18 * scale;
@@ -442,7 +442,9 @@
       'FPS  ' + (hasFrame && fps ? fps.toFixed(1) : '—'),
       '視認性  ' + (hasFrame ? Math.round(visibility * 100) + '%' : '—')
     ];
-    if (alignment && alignment.sideLabel) {
+    if (alignment && alignment.plane === 'frontal') {
+      lines.push('平面  前額面');
+    } else if (alignment && alignment.sideLabel) {
       lines.push('側面  ' + alignment.sideLabel);
       lines.push('前方  ' + (alignment.facingLabel || '不明'));
     }
@@ -703,6 +705,73 @@
     return plot;
   };
 
+  function drawMiniBadge(ctx, x, y, text, scale) {
+    if (!text || text === '—') return;
+    ctx.save();
+    ctx.font = '700 ' + Math.round(11 * scale) + 'px ' + FONT;
+    const width = ctx.measureText(text).width + 10 * scale;
+    const height = 16 * scale;
+    const left = Math.max(4 * scale, Math.min(ctx.canvas.width - width - 4 * scale, x - width / 2));
+    const top = Math.max(4 * scale, y - height / 2);
+    roundedRect(ctx, left, top, width, height, height / 2);
+    ctx.fillStyle = 'rgba(6, 9, 17, 0.88)';
+    ctx.fill();
+    ctx.fillStyle = '#e2e8f0';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, left + width / 2, top + height / 2);
+    ctx.restore();
+  }
+
+  function drawSegment(ctx, a, b, scale, color) {
+    if (!a || !b) return;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.lineWidth = 2 * scale;
+    ctx.strokeStyle = color;
+    ctx.setLineDash([]);
+    ctx.stroke();
+  }
+
+  function drawFrontal(ctx, canvas, frontal, scale) {
+    if (!frontal || !frontal.ok) return;
+    const points = frontal.points || {};
+    drawPlumbLine(ctx, canvas, frontal.originX, scale, '正中');
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    drawSegment(ctx, points.leftEar, points.rightEar, scale, 'rgba(226, 232, 240, 0.9)');
+    drawSegment(ctx, points.leftShoulder, points.rightShoulder, scale, 'rgba(226, 232, 240, 0.9)');
+    drawSegment(ctx, points.leftHip, points.rightHip, scale, 'rgba(226, 232, 240, 0.9)');
+    function kneeColor(view) {
+      if (!view || view.status === 'none') return '#94a3b8';
+      if (view.status === 'alert') return '#f43f5e';
+      if (view.status === 'warn') return '#fbbf24';
+      return '#34d399';
+    }
+    drawSegment(ctx, points.leftHip, points.leftKnee, scale, kneeColor(frontal.leftKnee));
+    drawSegment(ctx, points.leftKnee, points.leftAnkle, scale, kneeColor(frontal.leftKnee));
+    drawSegment(ctx, points.rightHip, points.rightKnee, scale, kneeColor(frontal.rightKnee));
+    drawSegment(ctx, points.rightKnee, points.rightAnkle, scale, kneeColor(frontal.rightKnee));
+    [points.leftEar, points.rightEar, points.leftShoulder, points.rightShoulder, points.leftHip, points.rightHip, points.leftKnee, points.rightKnee].forEach(function (point) {
+      if (point) drawDot(ctx, point, '#e2e8f0', 3.6 * scale, scale);
+    });
+    if (points.leftAnkle) drawDot(ctx, points.leftAnkle, '#34d399', 4.2 * scale, scale);
+    if (points.rightAnkle) drawDot(ctx, points.rightAnkle, '#34d399', 4.2 * scale, scale);
+    function mid(a, b) {
+      if (!a || !b) return null;
+      return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    }
+    const earMid = mid(points.leftEar, points.rightEar);
+    const shoulderMid = mid(points.leftShoulder, points.rightShoulder);
+    const hipMid = mid(points.leftHip, points.rightHip);
+    if (earMid) drawMiniBadge(ctx, earMid.x, earMid.y - 16 * scale, frontal.headTilt && frontal.headTilt.text, scale);
+    if (shoulderMid) drawMiniBadge(ctx, shoulderMid.x, shoulderMid.y - 16 * scale, frontal.shoulderLevel && frontal.shoulderLevel.text, scale);
+    if (hipMid) drawMiniBadge(ctx, hipMid.x, hipMid.y - 16 * scale, frontal.pelvisLevel && frontal.pelvisLevel.text, scale);
+    ctx.restore();
+  }
+
   RM.renderFrame = function renderFrame(ctx, frame) {
     if (!ctx) return;
     const canvas = ctx.canvas;
@@ -728,16 +797,23 @@
       drawEmptyState(ctx, canvas, scale, safeFrame.message, safeFrame.hint);
     }
 
-    const alignment = safeFrame.alignment;
-    if (alignment && alignment.ok && alignment.points && Number.isFinite(alignment.originX)) {
+    const frontalMode = safeFrame.plane === 'frontal' && safeFrame.frontal && safeFrame.frontal.ok;
+    const alignment = frontalMode ? safeFrame.frontal : safeFrame.alignment;
+    if (frontalMode) {
+      drawFrontal(ctx, canvas, safeFrame.frontal, scale);
+    } else if (alignment && alignment.ok && alignment.points && Number.isFinite(alignment.originX)) {
       drawChain(ctx, alignment, scale);
       if (safeFrame.romOpen) drawArm(ctx, alignment, scale);
       drawPlumbLine(ctx, canvas, alignment.originX, scale);
     }
 
-    // HUD の領域を先に確定し、数値バッジを避けてからもう一度手前に描く。
-    drawHud(ctx, canvas, safeFrame, scale);
-    if (alignment && alignment.ok && alignment.points && Number.isFinite(alignment.originX)) {
+    const hudFrame = frontalMode ? {
+      diagnostics: safeFrame.diagnostics,
+      alignment: safeFrame.frontal,
+      hudCollapsed: safeFrame.hudCollapsed
+    } : safeFrame;
+    drawHud(ctx, canvas, hudFrame, scale);
+    if (!frontalMode && alignment && alignment.ok && alignment.points && Number.isFinite(alignment.originX)) {
       drawConnectors(ctx, canvas, alignment, scale);
       drawHud(ctx, canvas, safeFrame, scale);
     }

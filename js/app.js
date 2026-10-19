@@ -10,6 +10,8 @@
     'sendToPose',
     'invalidatePoseQueue',
     'calculateSagittalAlignment',
+    'calculateFrontalAlignment',
+    'detectBodyPlane',
     'renderFrame',
     'getAspectFitBounds',
     'hitTestHud',
@@ -73,6 +75,12 @@
       imageEpoch: 0,
       rawLandmarks: null,
       alignment: null,
+      frontal: null,
+      plane: 'sagittal',
+      planeLock: null,
+      detectedPlane: 'sagittal',
+      planeStreak: 0,
+      toastTimer: 0,
       hudCollapsed: false,
       isRomDrawerOpen: false,
       scrubbing: false,
@@ -149,6 +157,17 @@
     }
 
     function canvasLabel() {
+      if (state.plane === 'frontal') {
+        const frontal = state.frontal;
+        const base = '前額面姿勢アライメント。左上をタップするとAI認識ステータスの表示を切り替えます。';
+        if (!frontal || !frontal.ok) return base;
+        return base
+          + ' 頭部 ' + (frontal.headTilt && frontal.headTilt.text)
+          + '、肩峰 ' + (frontal.shoulderLevel && frontal.shoulderLevel.text)
+          + '、骨盤 ' + (frontal.pelvisLevel && frontal.pelvisLevel.text)
+          + '、重心 ' + (frontal.cogShift && frontal.cogShift.text)
+          + '。';
+      }
       const base = '矢状面姿勢アライメント。左上をタップするとAI認識ステータスの表示を切り替えます。';
       const alignment = state.alignment;
       if (!alignment || !alignment.ok || !alignment.points) return base;
@@ -169,6 +188,8 @@
           mediaWidth: size.width,
           mediaHeight: size.height,
           alignment: state.alignment,
+          frontal: state.frontal,
+          plane: state.plane,
           diagnostics: RM.aiDiagnostics,
           hudCollapsed: state.hudCollapsed,
           romOpen: state.isRomDrawerOpen,
@@ -302,7 +323,8 @@
     function splitClinical(text) {
       const raw = String(text || '—');
       if (raw === '—') return { dir: '', value: '—' };
-      const match = raw.match(/^(正中|前|後|屈曲|伸展位|過伸展|伸展|前傾|後傾|垂直|前屈|後屈|中間位)\s+(.+)$/);
+      if (raw === '正常アライメント') return { dir: '正常アライメント', value: '' };
+      const match = raw.match(/^(右偏位|左偏位|右下がり|左下がり|右側屈|左側屈|正常アライメント|正中|前|後|屈曲|伸展位|過伸展|伸展|前傾|後傾|垂直|前屈|後屈|中間位|外反|内反|水平)\s+(.+)$/);
       if (!match) return { dir: '', value: raw };
       return { dir: match[1], value: match[2] };
     }
@@ -329,7 +351,42 @@
       setMetric(id, view.text, tone);
     }
 
+    function setClinicalBadge(id, view) {
+      const node = document.getElementById(id);
+      if (!node) return;
+      node.textContent = view && view.badge ? view.badge : '';
+    }
+
+    function updateFrontalSummary() {
+      const frontal = state.frontal;
+      if (!frontal || !frontal.ok) {
+        setMetric('metric-head-tilt', '—', 'none');
+        setMetric('metric-shoulder-level', '—', 'none');
+        setMetric('metric-pelvis-level', '—', 'none');
+        setMetric('metric-cog', '—', 'none');
+        setMetric('metric-knee-right', '—', 'none');
+        setMetric('metric-knee-left', '—', 'none');
+        setClinicalBadge('metric-knee-right-judge', null);
+        setClinicalBadge('metric-knee-left-judge', null);
+        return;
+      }
+      setMetric('metric-head-tilt', frontal.headTilt.text, frontal.headTilt.status);
+      setMetric('metric-shoulder-level', frontal.shoulderLevel.text, frontal.shoulderLevel.status);
+      setMetric('metric-pelvis-level', frontal.pelvisLevel.text, frontal.pelvisLevel.status);
+      setMetric('metric-cog', frontal.cogShift.text, frontal.cogShift.status);
+      setMetric('metric-knee-right', frontal.rightKnee.text, frontal.rightKnee.status);
+      setMetric('metric-knee-left', frontal.leftKnee.text, frontal.leftKnee.status);
+      setClinicalBadge('metric-knee-right-judge', frontal.rightKnee);
+      setClinicalBadge('metric-knee-left-judge', frontal.leftKnee);
+    }
+
     function updateSummary() {
+      if (state.plane === 'frontal') {
+        updateFrontalSummary();
+        updateRom();
+        updateNotes();
+        return;
+      }
       const alignment = state.alignment;
       const judge = document.getElementById('metric-knee-judge');
       const format = RM.ClinicalAngleFormatter;
@@ -439,7 +496,10 @@
     function updateNotes() {
       const alignment = state.alignment;
       const lines = [];
-      if (alignment && alignment.ok) {
+      if (state.plane === 'frontal' && state.frontal && state.frontal.ok) {
+        lines.push('前額面として左右対称と水平傾斜を計測しています。');
+        lines.push('校正は身長 ' + state.frontal.heightCm + ' cm の 94% を頭頂〜外果に対応づけています。');
+      } else if (alignment && alignment.ok) {
         lines.push(alignment.sideLabel + '側面を計測。前方は' + alignment.facingLabel + '。');
         lines.push('校正は身長 ' + alignment.heightCm + ' cm の 94% を頭頂〜外果に対応づけています。');
       } else if (state.mode !== 'empty') {
@@ -473,11 +533,76 @@
         canvas.height,
         bounds
       );
+      state.frontal = RM.calculateFrontalAlignment(
+        state.rawLandmarks,
+        state.heightCm,
+        canvas.width,
+        canvas.height,
+        bounds
+      );
       if (state.alignment && typeof state.alignment.meanVisibility === 'number') {
         RM.aiDiagnostics.visibility = state.alignment.meanVisibility;
       }
+      applyDetectedPlane(RM.detectBodyPlane(
+        state.rawLandmarks,
+        canvas.width,
+        canvas.height,
+        bounds
+      ));
       recordSway(state.pendingSampleTime);
       refresh();
+    }
+
+    function syncPlaneControls() {
+      if (wrapper) wrapper.dataset.plane = state.plane;
+      const sagittal = document.getElementById('plane-sagittal');
+      const frontal = document.getElementById('plane-frontal');
+      if (sagittal) {
+        const on = state.plane !== 'frontal';
+        sagittal.classList.toggle('is-active', on);
+        sagittal.setAttribute('aria-pressed', on ? 'true' : 'false');
+      }
+      if (frontal) {
+        const on = state.plane === 'frontal';
+        frontal.classList.toggle('is-active', on);
+        frontal.setAttribute('aria-pressed', on ? 'true' : 'false');
+      }
+    }
+
+    function showPlaneToast(plane) {
+      const toast = document.getElementById('plane-toast');
+      if (!toast) return;
+      toast.textContent = plane === 'frontal' ? '🤖 正面姿勢を検出しました' : '🤖 側面姿勢を検出しました';
+      toast.hidden = false;
+      if (state.toastTimer) global.clearTimeout(state.toastTimer);
+      state.toastTimer = global.setTimeout(function () {
+        toast.hidden = true;
+        state.toastTimer = 0;
+      }, 2200);
+    }
+
+    function applyDetectedPlane(detected) {
+      if (!detected || !detected.confident || (detected.plane !== 'frontal' && detected.plane !== 'sagittal')) return;
+      if (detected.plane === state.detectedPlane) {
+        state.planeStreak = (state.planeStreak || 0) + 1;
+      } else {
+        state.detectedPlane = detected.plane;
+        state.planeStreak = 1;
+        return;
+      }
+      if (state.planeLock || state.planeStreak < 2) return;
+      if (detected.plane === state.plane) return;
+      state.plane = detected.plane;
+      syncPlaneControls();
+      showPlaneToast(detected.plane);
+    }
+
+    function setPlane(plane) {
+      if (plane !== 'frontal' && plane !== 'sagittal') return;
+      state.planeLock = plane;
+      state.plane = plane;
+      syncPlaneControls();
+      if (state.step === 3) refresh();
     }
 
     function onPoseResults(results) {
@@ -568,6 +693,12 @@
       RM.invalidatePoseQueue();
       state.rawLandmarks = null;
       state.alignment = null;
+      state.frontal = null;
+      state.plane = 'sagittal';
+      state.planeLock = null;
+      state.detectedPlane = 'sagittal';
+      state.planeStreak = 0;
+      syncPlaneControls();
       state.swaySamples = [];
       state.pendingSampleTime = null;
     }
@@ -999,6 +1130,11 @@
       swayCanvas.addEventListener('pointerup', endSwayScrub);
       swayCanvas.addEventListener('pointercancel', endSwayScrub);
     }
+    const planeSagittalButton = document.getElementById('plane-sagittal');
+    const planeFrontalButton = document.getElementById('plane-frontal');
+    if (planeSagittalButton) planeSagittalButton.addEventListener('click', function () { setPlane('sagittal'); });
+    if (planeFrontalButton) planeFrontalButton.addEventListener('click', function () { setPlane('frontal'); });
+    syncPlaneControls();
     Array.prototype.forEach.call(swayButtons, function (button) {
       button.addEventListener('click', function () {
         setSwayTarget(button.getAttribute('data-joint'));

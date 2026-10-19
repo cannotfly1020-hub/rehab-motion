@@ -681,4 +681,221 @@
       }
     };
   };
+
+  function planePoint(landmarks, index, bounds) {
+    return toCanvas(landmarks[index], bounds);
+  }
+
+  function bothVisible(a, b) {
+    const minVis = RM.THRESHOLDS.minVisibility;
+    return !!(a && b && a.visibility >= minVis && b.visibility >= minVis);
+  }
+
+  function anatomicalRightSign(left, right) {
+    if (!left || !right) return 1;
+    if (right.x === left.x) return 1;
+    return right.x > left.x ? 1 : -1;
+  }
+
+  function levelDegrees(left, right) {
+    if (!bothVisible(left, right)) return null;
+    const dx = Math.abs(right.x - left.x);
+    const dy = right.y - left.y;
+    if (dx < 1 && Math.abs(dy) < 1) return 0;
+    return round1(Math.atan2(dy, Math.max(dx, 0.001)) * 180 / Math.PI);
+  }
+
+  function levelView(deg, kind) {
+    if (deg === null || typeof deg !== 'number') {
+      return { dir: '', text: '—', val: '—', deg: null, status: 'none' };
+    }
+    const abs = Math.abs(deg);
+    if (abs <= 1) {
+      const dir = kind === 'flex' ? '中間位' : '水平';
+      return { dir: dir, text: dir + ' 0°', val: '0.0°', deg: 0, status: 'ok' };
+    }
+    const dir = kind === 'flex'
+      ? (deg > 0 ? '右側屈' : '左側屈')
+      : (deg > 0 ? '右下がり' : '左下がり');
+    const status = abs > 3 ? 'warn' : 'ok';
+    return { dir: dir, text: dir + ' ' + abs.toFixed(1) + '°', val: abs.toFixed(1) + '°', deg: deg, status: status };
+  }
+
+  function lateralView(cm) {
+    if (typeof cm !== 'number' || !Number.isFinite(cm)) {
+      return { dir: '', text: '—', val: '—', cm: null, status: 'none' };
+    }
+    const rounded = round1(cm);
+    const abs = Math.abs(rounded);
+    if (rounded === 0) {
+      return { dir: '正中', text: '正中 0.0 cm', val: '0.0 cm', cm: 0, status: 'ok' };
+    }
+    const dir = rounded > 0 ? '右偏位' : '左偏位';
+    let status = 'ok';
+    if (abs > 3) status = 'alert';
+    else if (abs > 1.5) status = 'warn';
+    return { dir: dir, text: dir + ' ' + abs.toFixed(1) + ' cm', val: abs.toFixed(1) + ' cm', cm: rounded, status: status };
+  }
+
+  function angleAt(vertex, a, b) {
+    const v1x = a.x - vertex.x;
+    const v1y = a.y - vertex.y;
+    const v2x = b.x - vertex.x;
+    const v2y = b.y - vertex.y;
+    const n1 = Math.hypot(v1x, v1y);
+    const n2 = Math.hypot(v2x, v2y);
+    if (n1 < 1 || n2 < 1) return null;
+    const cos = clamp((v1x * v2x + v1y * v2y) / (n1 * n2), -1, 1);
+    return Math.acos(cos) * 180 / Math.PI;
+  }
+
+  function frontalKneeView(hip, knee, ankle, midlineX) {
+    const empty = { dir: '', text: '—', val: '—', badge: '', status: 'none', deg: null };
+    if (!hip || !knee || !ankle) return empty;
+    const minVis = RM.THRESHOLDS.minVisibility;
+    if (hip.visibility < minVis || knee.visibility < minVis || ankle.visibility < minVis) return empty;
+    const interior = angleAt(knee, hip, ankle);
+    if (interior === null) return empty;
+    const deviation = round1(Math.abs(180 - interior));
+    if (deviation === null) return empty;
+    if (deviation <= 2) {
+      return { dir: '正常アライメント', text: '正常アライメント', val: '0.0°', badge: '', status: 'ok', deg: deviation };
+    }
+    const ax = ankle.x - hip.x;
+    const ay = ankle.y - hip.y;
+    const len2 = ax * ax + ay * ay;
+    const t = len2 > 1 ? ((knee.x - hip.x) * ax + (knee.y - hip.y) * ay) / len2 : 0;
+    const projX = hip.x + t * ax;
+    const kneeRight = knee.x >= projX;
+    const midRight = midlineX >= projX;
+    const towardMidline = kneeRight === midRight;
+    const dir = towardMidline ? '外反' : '内反';
+    const badge = towardMidline ? 'X脚傾向' : 'O脚傾向';
+    const status = deviation > 5 ? 'warn' : 'ok';
+    return {
+      dir: dir,
+      text: dir + ' ' + deviation.toFixed(1) + '°',
+      val: deviation.toFixed(1) + '°',
+      badge: badge,
+      status: status,
+      deg: deviation
+    };
+  }
+
+  RM.detectBodyPlane = function detectBodyPlane(landmarks, canvasWidth, canvasHeight, fitBounds) {
+    const unknown = { plane: 'sagittal', ratio: null, confident: false, shoulderWidth: 0, hipWidth: 0, bodyHeight: 0 };
+    if (!landmarks || landmarks.length < 29) return unknown;
+    const bounds = resolveBounds(canvasWidth, canvasHeight, fitBounds);
+    const leftShoulder = landmarks[11];
+    const rightShoulder = landmarks[12];
+    const leftHip = landmarks[23];
+    const rightHip = landmarks[24];
+    if (!leftShoulder || !rightShoulder) return unknown;
+    const shoulderWidth = Math.abs(rightShoulder.x - leftShoulder.x) * bounds.width;
+    const hipWidth = leftHip && rightHip ? Math.abs(rightHip.x - leftHip.x) * bounds.width : 0;
+    const topMark = landmarks[0] || landmarks[7] || landmarks[8];
+    const ankleMark = landmarks[27] && landmarks[28]
+      ? (landmarks[27].y >= landmarks[28].y ? landmarks[27] : landmarks[28])
+      : (landmarks[27] || landmarks[28]);
+    if (!topMark || !ankleMark || !Number.isFinite(topMark.y) || !Number.isFinite(ankleMark.y)) return unknown;
+    const bodyHeight = Math.abs(ankleMark.y - topMark.y) * bounds.height;
+    if (!(bodyHeight > 8)) return unknown;
+    const ratio = shoulderWidth / bodyHeight;
+    const shouldersHigh = visibilityOf(leftShoulder) >= RM.THRESHOLDS.minVisibility
+      && visibilityOf(rightShoulder) >= RM.THRESHOLDS.minVisibility;
+    const hipsHigh = visibilityOf(leftHip) >= RM.THRESHOLDS.minVisibility
+      && visibilityOf(rightHip) >= RM.THRESHOLDS.minVisibility;
+    const frontal = ratio >= 0.14 && shouldersHigh && hipsHigh;
+    return {
+      plane: frontal ? 'frontal' : 'sagittal',
+      ratio: ratio,
+      confident: shouldersHigh && hipsHigh && Number.isFinite(ratio),
+      shoulderWidth: shoulderWidth,
+      hipWidth: hipWidth,
+      bodyHeight: bodyHeight
+    };
+  };
+
+  RM.calculateFrontalAlignment = function calculateFrontalAlignment(landmarks, userHeight, canvasWidth, canvasHeight, fitBounds) {
+    const failed = { ok: false, plane: 'frontal', warnings: ['前額面の左右ランドマークが不足しています。'] };
+    if (!landmarks || landmarks.length < 29) return failed;
+    const heightCm = normalizeHeight(userHeight);
+    const bounds = resolveBounds(canvasWidth, canvasHeight, fitBounds);
+    const nose = planePoint(landmarks, 0, bounds);
+    const leftEar = planePoint(landmarks, 7, bounds);
+    const rightEar = planePoint(landmarks, 8, bounds);
+    const leftShoulder = planePoint(landmarks, 11, bounds);
+    const rightShoulder = planePoint(landmarks, 12, bounds);
+    const leftHip = planePoint(landmarks, 23, bounds);
+    const rightHip = planePoint(landmarks, 24, bounds);
+    const leftKnee = planePoint(landmarks, 25, bounds);
+    const rightKnee = planePoint(landmarks, 26, bounds);
+    const leftAnkle = planePoint(landmarks, 27, bounds);
+    const rightAnkle = planePoint(landmarks, 28, bounds);
+    if (!bothVisible(leftAnkle, rightAnkle) || !bothVisible(leftShoulder, rightShoulder)) return failed;
+
+    const originX = (leftAnkle.x + rightAnkle.x) / 2;
+    const rightSign = anatomicalRightSign(leftShoulder, rightShoulder);
+    const upperEar = leftEar && rightEar ? (leftEar.y <= rightEar.y ? leftEar : rightEar) : (leftEar || rightEar || nose);
+    const lowerAnkle = leftAnkle.y >= rightAnkle.y ? leftAnkle : rightAnkle;
+    let px2cm = null;
+    if (upperEar && lowerAnkle) {
+      const vertex = estimateVertex(upperEar, lowerAnkle);
+      const pixelSpan = Math.abs(lowerAnkle.y - vertex.y);
+      if (pixelSpan > 8) px2cm = pixelSpan / (heightCm * VERTEX_MALLEOLUS_OF_STATURE);
+    }
+
+    function shiftCm(point) {
+      if (!point || !px2cm) return null;
+      return round1((point.x - originX) * rightSign / px2cm);
+    }
+
+    const headCenter = nose && nose.visibility >= RM.THRESHOLDS.minVisibility
+      ? nose
+      : (leftEar && rightEar ? { x: (leftEar.x + rightEar.x) / 2, y: (leftEar.y + rightEar.y) / 2, visibility: Math.min(leftEar.visibility, rightEar.visibility) } : null);
+    const sternum = {
+      x: (leftShoulder.x + rightShoulder.x) / 2,
+      y: (leftShoulder.y + rightShoulder.y) / 2,
+      visibility: Math.min(leftShoulder.visibility, rightShoulder.visibility)
+    };
+    const pubis = bothVisible(leftHip, rightHip) ? {
+      x: (leftHip.x + rightHip.x) / 2,
+      y: (leftHip.y + rightHip.y) / 2,
+      visibility: Math.min(leftHip.visibility, rightHip.visibility)
+    } : null;
+
+    return {
+      ok: true,
+      plane: 'frontal',
+      warnings: px2cm ? [] : ['頭から足までの長さが足りず、cm偏位を確定できません。'],
+      heightCm: heightCm,
+      px2cm: px2cm,
+      originX: originX,
+      rightSign: rightSign,
+      headTilt: levelView(levelDegrees(leftEar, rightEar), 'flex'),
+      shoulderLevel: levelView(levelDegrees(leftShoulder, rightShoulder), 'level'),
+      pelvisLevel: levelView(levelDegrees(leftHip, rightHip), 'level'),
+      headShift: lateralView(shiftCm(headCenter)),
+      sternumShift: lateralView(shiftCm(sternum)),
+      cogShift: lateralView(shiftCm(pubis)),
+      leftKnee: frontalKneeView(leftHip, leftKnee, leftAnkle, originX),
+      rightKnee: frontalKneeView(rightHip, rightKnee, rightAnkle, originX),
+      points: {
+        nose: nose,
+        leftEar: leftEar,
+        rightEar: rightEar,
+        leftShoulder: leftShoulder,
+        rightShoulder: rightShoulder,
+        leftHip: leftHip,
+        rightHip: rightHip,
+        leftKnee: leftKnee,
+        rightKnee: rightKnee,
+        leftAnkle: leftAnkle,
+        rightAnkle: rightAnkle,
+        headCenter: headCenter,
+        sternum: sternum,
+        pubis: pubis
+      }
+    };
+  };
 })(typeof window !== 'undefined' ? window : globalThis);

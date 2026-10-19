@@ -884,6 +884,86 @@ input:focus-visible {
   overflow: hidden;
 }
 
+.analysis-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 2px 4px;
+}
+
+.analysis-bar .source-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+
+.plane-toggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  padding: 2px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.plane-key {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.62);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  min-height: 28px;
+  padding: 2px 10px;
+  white-space: nowrap;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.plane-key.is-active {
+  background: rgba(16, 185, 129, 0.22);
+  color: #34d399;
+}
+
+.plane-toast {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  z-index: 6;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.82);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #34d399;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.plane-toast[hidden] {
+  display: none !important;
+}
+
+.hud-set {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 6px;
+}
+
+.screen-wrapper[data-plane="frontal"] .hud-sagittal,
+.screen-wrapper:not([data-plane="frontal"]) .hud-frontal {
+  display: none;
+}
+
 .source-label {
   margin: 0 2px 2px;
   min-height: 1.1em;

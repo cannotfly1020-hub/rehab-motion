@@ -116,9 +116,15 @@
 
       <section id="step-3" class="step-view" hidden aria-labelledby="step-3-title">
         <h2 id="step-3-title" class="visually-hidden">姿勢アライメント解析</h2>
-        <p id="source-label" class="source-label">メディア未選択</p>
+        <div class="analysis-bar">
+          <p id="source-label" class="source-label">メディア未選択</p>
+          <div class="plane-toggle" role="group" aria-label="計測平面">
+            <button type="button" id="plane-sagittal" class="plane-key is-active" aria-pressed="true" aria-label="側面（矢状面）">🧍‍♂️ 側面</button>
+            <button type="button" id="plane-frontal" class="plane-key" aria-pressed="false" aria-label="正面（前額面）">🧍 正面</button>
+          </div>
+        </div>
 
-        <div class="screen-wrapper" id="screen-wrapper">
+        <div class="screen-wrapper" id="screen-wrapper" data-plane="sagittal">
           <video
             id="video"
             class="media-source"
@@ -135,40 +141,81 @@
             height="480"
             aria-label="矢状面姿勢アライメント。左上をタップするとAI認識ステータスの表示を切り替えます。"
           ></canvas>
-          <aside class="side-hud side-hud-left" aria-label="左右偏位">
-            <article class="hud-metric" id="metric-ear" data-tone="none">
-              <span class="hud-name">耳垂</span>
-              <span class="hud-dir"></span>
-              <p class="metric-value tabular-nums">—</p>
-            </article>
-            <article class="hud-metric" id="metric-shoulder" data-tone="none">
-              <span class="hud-name">肩峰</span>
-              <span class="hud-dir"></span>
-              <p class="metric-value tabular-nums">—</p>
-            </article>
-            <article class="hud-metric" id="metric-hip" data-tone="none">
-              <span class="hud-name">大転子</span>
-              <span class="hud-dir"></span>
-              <p class="metric-value tabular-nums">—</p>
-            </article>
+          <p id="plane-toast" class="plane-toast" hidden>側面姿勢を検出しました</p>
+          <aside class="side-hud side-hud-left" aria-label="左側の計測">
+            <div class="hud-set hud-sagittal">
+              <article class="hud-metric" id="metric-ear" data-tone="none">
+                <span class="hud-name">耳垂</span>
+                <span class="hud-dir"></span>
+                <p class="metric-value tabular-nums">—</p>
+              </article>
+              <article class="hud-metric" id="metric-shoulder" data-tone="none">
+                <span class="hud-name">肩峰</span>
+                <span class="hud-dir"></span>
+                <p class="metric-value tabular-nums">—</p>
+              </article>
+              <article class="hud-metric" id="metric-hip" data-tone="none">
+                <span class="hud-name">大転子</span>
+                <span class="hud-dir"></span>
+                <p class="metric-value tabular-nums">—</p>
+              </article>
+            </div>
+            <div class="hud-set hud-frontal">
+              <article class="hud-metric" id="metric-head-tilt" data-tone="none">
+                <span class="hud-name">頭部</span>
+                <span class="hud-dir"></span>
+                <p class="metric-value tabular-nums">—</p>
+              </article>
+              <article class="hud-metric" id="metric-shoulder-level" data-tone="none">
+                <span class="hud-name">肩峰</span>
+                <span class="hud-dir"></span>
+                <p class="metric-value tabular-nums">—</p>
+              </article>
+              <article class="hud-metric" id="metric-pelvis-level" data-tone="none">
+                <span class="hud-name">骨盤</span>
+                <span class="hud-dir"></span>
+                <p class="metric-value tabular-nums">—</p>
+              </article>
+            </div>
           </aside>
-          <aside class="side-hud side-hud-right" aria-label="角度">
-            <article class="hud-metric" id="metric-knee" data-tone="none">
-              <span class="hud-name">膝</span>
-              <span class="hud-dir"></span>
-              <p class="metric-value tabular-nums">—</p>
-              <p class="metric-sub" id="metric-knee-judge"></p>
-            </article>
-            <article class="hud-metric" id="metric-trunk" data-tone="none">
-              <span class="hud-name">体幹</span>
-              <span class="hud-dir"></span>
-              <p class="metric-value tabular-nums">—</p>
-            </article>
-            <article class="hud-metric" id="metric-neck" data-tone="none">
-              <span class="hud-name">頚部</span>
-              <span class="hud-dir"></span>
-              <p class="metric-value tabular-nums">—</p>
-            </article>
+          <aside class="side-hud side-hud-right" aria-label="右側の計測">
+            <div class="hud-set hud-sagittal">
+              <article class="hud-metric" id="metric-knee" data-tone="none">
+                <span class="hud-name">膝</span>
+                <span class="hud-dir"></span>
+                <p class="metric-value tabular-nums">—</p>
+                <p class="metric-sub" id="metric-knee-judge"></p>
+              </article>
+              <article class="hud-metric" id="metric-trunk" data-tone="none">
+                <span class="hud-name">体幹</span>
+                <span class="hud-dir"></span>
+                <p class="metric-value tabular-nums">—</p>
+              </article>
+              <article class="hud-metric" id="metric-neck" data-tone="none">
+                <span class="hud-name">頚部</span>
+                <span class="hud-dir"></span>
+                <p class="metric-value tabular-nums">—</p>
+              </article>
+            </div>
+            <div class="hud-set hud-frontal">
+              <article class="hud-metric" id="metric-cog" data-tone="none">
+                <span class="hud-name">重心</span>
+                <span class="hud-dir"></span>
+                <p class="metric-value tabular-nums">—</p>
+              </article>
+              <article class="hud-metric" id="metric-knee-right" data-tone="none">
+                <span class="hud-name">右膝</span>
+                <span class="hud-dir"></span>
+                <p class="metric-value tabular-nums">—</p>
+                <p class="metric-sub" id="metric-knee-right-judge"></p>
+              </article>
+              <article class="hud-metric" id="metric-knee-left" data-tone="none">
+                <span class="hud-name">左膝</span>
+                <span class="hud-dir"></span>
+                <p class="metric-value tabular-nums">—</p>
+                <p class="metric-sub" id="metric-knee-left-judge"></p>
+              </article>
+            </div>
           </aside>
         </div>
 
