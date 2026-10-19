@@ -597,7 +597,7 @@
     }
 
     const originX = ankle.x;
-    [ear, shoulder, hip].forEach(function (point) {
+    [ear, shoulder, hip, knee].forEach(function (point) {
       if (!px2cm || !facing.facingSign || point.visibility < RM.THRESHOLDS.minVisibility) return;
       point.cm = round1((point.x - originX) * facing.facingSign / px2cm);
     });

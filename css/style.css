@@ -815,9 +815,19 @@ input:focus-visible {
   border-color: rgba(34, 211, 238, 0.5);
 }
 
+.sway-key.is-active[data-joint="shoulder"] {
+  color: #a78bfa;
+  border-color: rgba(167, 139, 250, 0.55);
+}
+
 .sway-key.is-active[data-joint="hip"] {
   color: #fb923c;
   border-color: rgba(251, 146, 60, 0.55);
+}
+
+.sway-key.is-active[data-joint="knee"] {
+  color: #f472b6;
+  border-color: rgba(244, 114, 182, 0.55);
 }
 
 #step-3.is-active {

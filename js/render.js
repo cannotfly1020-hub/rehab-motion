@@ -520,8 +520,17 @@
     };
   }
 
-  function swaySeriesColor(target) {
-    return target === 'hip' ? '#fb923c' : '#22d3ee';
+  function swaySeriesStyle(target) {
+    if (target === 'shoulder') {
+      return { stroke: '#a78bfa', fill: 'rgba(167, 139, 250, 0.16)', shadow: 'rgba(167, 139, 250, 0.45)' };
+    }
+    if (target === 'hip') {
+      return { stroke: '#fb923c', fill: 'rgba(251, 146, 60, 0.16)', shadow: 'rgba(251, 146, 60, 0.45)' };
+    }
+    if (target === 'knee') {
+      return { stroke: '#f472b6', fill: 'rgba(244, 114, 182, 0.16)', shadow: 'rgba(244, 114, 182, 0.45)' };
+    }
+    return { stroke: '#22d3ee', fill: 'rgba(34, 211, 238, 0.16)', shadow: 'rgba(34, 211, 238, 0.45)' };
   }
 
   function swayPoints(samples, target, xAt, yAt) {
@@ -571,11 +580,13 @@
     const cssH = Math.max(1, canvas.clientHeight || (model && model.height) || 56);
     const scale = canvas.width / cssW || 1;
     const safe = model || {};
-    const target = safe.target === 'hip' ? 'hip' : 'ear';
+    const target = safe.target === 'shoulder' || safe.target === 'hip' || safe.target === 'knee'
+      ? safe.target
+      : 'ear';
     const samples = safe.samples || [];
     const duration = Number.isFinite(safe.duration) && safe.duration > 0 ? safe.duration : 0;
     const current = Number.isFinite(safe.currentTime) ? safe.currentTime : 0;
-    const color = swaySeriesColor(target);
+    const series = swaySeriesStyle(target);
 
     const plot = {
       left: 26,
@@ -634,21 +645,21 @@
       ctx.lineTo(points[points.length - 1].x, midY);
       ctx.lineTo(points[0].x, midY);
       ctx.closePath();
-      ctx.fillStyle = target === 'hip' ? 'rgba(251, 146, 60, 0.16)' : 'rgba(34, 211, 238, 0.16)';
+      ctx.fillStyle = series.fill;
       ctx.fill();
     });
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
-    ctx.strokeStyle = color;
+    ctx.strokeStyle = series.stroke;
     ctx.lineWidth = 1.6;
-    ctx.shadowColor = target === 'hip' ? 'rgba(251, 146, 60, 0.45)' : 'rgba(34, 211, 238, 0.45)';
+    ctx.shadowColor = series.shadow;
     ctx.shadowBlur = 6;
     runs.forEach(function (points) {
       if (!points.length) return;
       if (points.length === 1) {
         ctx.beginPath();
         ctx.arc(points[0].x, points[0].y, 2.4, 0, Math.PI * 2);
-        ctx.fillStyle = color;
+        ctx.fillStyle = series.stroke;
         ctx.fill();
         return;
       }
@@ -666,7 +677,7 @@
     if (maxPoint && Math.abs(maxPoint.value) >= 0.05) {
       ctx.beginPath();
       ctx.arc(maxPoint.x, maxPoint.y, 2.6, 0, Math.PI * 2);
-      ctx.fillStyle = color;
+      ctx.fillStyle = series.stroke;
       ctx.fill();
     }
 

@@ -176,8 +176,10 @@
           <div class="sway-chart" id="sway-chart">
             <canvas id="sway-chart-canvas" width="640" height="44" aria-label="前後動揺のタイムライン。耳垂が初期表示です。波形をタップするとその時刻へ移動します。"></canvas>
             <div class="sway-legend" role="group" aria-label="動揺の表示対象">
-              <button type="button" id="sway-ear" class="sway-key is-active" data-joint="ear" aria-pressed="true">耳垂</button>
-              <button type="button" id="sway-hip" class="sway-key" data-joint="hip" aria-pressed="false">大転子</button>
+              <button type="button" id="sway-ear" class="sway-key is-active" data-joint="ear" aria-pressed="true" aria-label="耳垂（頭部動揺）">耳垂</button>
+              <button type="button" id="sway-shoulder" class="sway-key" data-joint="shoulder" aria-pressed="false" aria-label="肩峰（体幹・胸郭動揺）">肩峰</button>
+              <button type="button" id="sway-hip" class="sway-key" data-joint="hip" aria-pressed="false" aria-label="大転子（骨盤動揺）">大転子</button>
+              <button type="button" id="sway-knee" class="sway-key" data-joint="knee" aria-pressed="false" aria-label="膝（膝関節動揺）">膝</button>
             </div>
           </div>
           <div class="transport" aria-label="動画操作">

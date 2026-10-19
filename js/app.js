@@ -52,8 +52,7 @@
     const imageInput = document.getElementById('image-input');
     const cameraInput = document.getElementById('camera-input');
     const swayCanvas = document.getElementById('sway-chart-canvas');
-    const swayEarButton = document.getElementById('sway-ear');
-    const swayHipButton = document.getElementById('sway-hip');
+    const swayButtons = document.querySelectorAll('.sway-key');
     const ctx = canvas.getContext('2d', { alpha: false }) || canvas.getContext('2d');
     const swayCtx = swayCanvas ? (swayCanvas.getContext('2d') || null) : null;
 
@@ -198,21 +197,24 @@
       drawSwayChart();
     }
 
+    function swayCm(alignment, key) {
+      const point = alignment && alignment.ok && alignment.points ? alignment.points[key] : null;
+      return point && typeof point.cm === 'number' ? point.cm : null;
+    }
+
     function recordSway(sampleTime) {
       if (state.mode !== 'video') return;
       const time = Number(sampleTime);
       if (!Number.isFinite(time) || time < 0) return;
       const alignment = state.alignment;
-      const ear = alignment && alignment.ok && alignment.points && alignment.points.ear
-        ? alignment.points.ear.cm : null;
-      const hip = alignment && alignment.ok && alignment.points && alignment.points.hip
-        ? alignment.points.hip.cm : null;
-      if (typeof ear !== 'number' && typeof hip !== 'number') return;
       const point = {
         t: time,
-        ear: typeof ear === 'number' ? ear : null,
-        hip: typeof hip === 'number' ? hip : null
+        ear: swayCm(alignment, 'ear'),
+        shoulder: swayCm(alignment, 'shoulder'),
+        hip: swayCm(alignment, 'hip'),
+        knee: swayCm(alignment, 'knee')
       };
+      if (point.ear === null && point.shoulder === null && point.hip === null && point.knee === null) return;
       const samples = state.swaySamples;
       let index = 0;
       while (index < samples.length && samples[index].t < time - 0.045) index += 1;
@@ -236,7 +238,8 @@
         emptyLabel: state.mode === 'image' ? '静止画では波形を作りません' : '再生すると動揺を記録します'
       });
       if (swayCanvas) {
-        const name = state.swayTarget === 'hip' ? '大転子' : '耳垂';
+        const names = { ear: '耳垂', shoulder: '肩峰', hip: '大転子', knee: '膝' };
+        const name = names[state.swayTarget] || '耳垂';
         swayCanvas.setAttribute('aria-label', name + 'の前後動揺。波形をタップするとその時刻へ移動します。');
       }
     }
@@ -256,17 +259,13 @@
     }
 
     function setSwayTarget(target) {
-      state.swayTarget = target === 'hip' ? 'hip' : 'ear';
-      if (swayEarButton) {
-        const on = state.swayTarget === 'ear';
-        swayEarButton.classList.toggle('is-active', on);
-        swayEarButton.setAttribute('aria-pressed', on ? 'true' : 'false');
-      }
-      if (swayHipButton) {
-        const on = state.swayTarget === 'hip';
-        swayHipButton.classList.toggle('is-active', on);
-        swayHipButton.setAttribute('aria-pressed', on ? 'true' : 'false');
-      }
+      const allowed = { ear: true, shoulder: true, hip: true, knee: true };
+      state.swayTarget = allowed[target] ? target : 'ear';
+      Array.prototype.forEach.call(swayButtons, function (button) {
+        const on = button.getAttribute('data-joint') === state.swayTarget;
+        button.classList.toggle('is-active', on);
+        button.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
       drawSwayChart();
     }
 
@@ -1000,8 +999,11 @@
       swayCanvas.addEventListener('pointerup', endSwayScrub);
       swayCanvas.addEventListener('pointercancel', endSwayScrub);
     }
-    if (swayEarButton) swayEarButton.addEventListener('click', function () { setSwayTarget('ear'); });
-    if (swayHipButton) swayHipButton.addEventListener('click', function () { setSwayTarget('hip'); });
+    Array.prototype.forEach.call(swayButtons, function (button) {
+      button.addEventListener('click', function () {
+        setSwayTarget(button.getAttribute('data-joint'));
+      });
+    });
 
     if (typeof ResizeObserver === 'function') {
       const observer = new ResizeObserver(function () { resizeCanvas(); });
