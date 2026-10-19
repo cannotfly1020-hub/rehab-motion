@@ -13,6 +13,7 @@
     'renderFrame',
     'getAspectFitBounds',
     'hitTestHud',
+    'drawSwayChart',
     'formatDeviation',
     'formatKnee',
     'formatKneeJudgement',
@@ -50,7 +51,11 @@
     const videoInput = document.getElementById('video-input');
     const imageInput = document.getElementById('image-input');
     const cameraInput = document.getElementById('camera-input');
+    const swayCanvas = document.getElementById('sway-chart-canvas');
+    const swayEarButton = document.getElementById('sway-ear');
+    const swayHipButton = document.getElementById('sway-hip');
     const ctx = canvas.getContext('2d', { alpha: false }) || canvas.getContext('2d');
+    const swayCtx = swayCanvas ? (swayCanvas.getContext('2d') || null) : null;
 
     if (!ctx) {
       console.error('[RehabMotion] canvas 2d context is unavailable');
@@ -74,7 +79,11 @@
       rafId: 0,
       sourceName: '',
       hudPointer: null,
-      heightCm: readStoredHeight()
+      heightCm: readStoredHeight(),
+      swaySamples: [],
+      swayTarget: 'ear',
+      swayPlot: null,
+      swayScrubbing: false
     };
 
     function readStoredHeight() {
@@ -102,7 +111,10 @@
       heightInput.value = String(value);
       heightSlider.value = String(value);
       saveHeight(value);
-      if (state.step === 3 && state.rawLandmarks) recomputeAlignment();
+      if (state.step === 3 && state.rawLandmarks) {
+        resetSway();
+        recomputeAlignment();
+      }
     }
 
     function currentMedia() {
@@ -163,9 +175,106 @@
           hint: stageHint()
         });
         canvas.setAttribute('aria-label', canvasLabel());
+        drawSwayChart();
       } catch (error) {
         console.error('[RehabMotion] render failed', error);
       }
+    }
+
+    function poseSampleTime() {
+      if (state.mode === 'video' && Number.isFinite(video.currentTime)) return video.currentTime;
+      return 0;
+    }
+
+    function requestPose(source) {
+      RM.sendToPose(source, poseSampleTime());
+    }
+
+    function resetSway() {
+      state.swaySamples = [];
+      drawSwayChart();
+    }
+
+    function recordSway(sampleTime) {
+      if (state.mode !== 'video') return;
+      const time = Number(sampleTime);
+      if (!Number.isFinite(time) || time < 0) return;
+      const alignment = state.alignment;
+      const ear = alignment && alignment.ok && alignment.points && alignment.points.ear
+        ? alignment.points.ear.cm : null;
+      const hip = alignment && alignment.ok && alignment.points && alignment.points.hip
+        ? alignment.points.hip.cm : null;
+      if (typeof ear !== 'number' && typeof hip !== 'number') return;
+      const point = {
+        t: time,
+        ear: typeof ear === 'number' ? ear : null,
+        hip: typeof hip === 'number' ? hip : null
+      };
+      const samples = state.swaySamples;
+      let index = 0;
+      while (index < samples.length && samples[index].t < time - 0.045) index += 1;
+      if (index < samples.length && Math.abs(samples[index].t - time) <= 0.05) {
+        samples[index] = point;
+      } else {
+        samples.splice(index, 0, point);
+      }
+      if (samples.length > 3600) samples.splice(0, samples.length - 3600);
+    }
+
+    function drawSwayChart() {
+      if (!swayCtx || state.step !== 3 || typeof RM.drawSwayChart !== 'function') return;
+      const duration = state.mode === 'video' && Number.isFinite(video.duration) ? video.duration : 0;
+      const current = state.mode === 'video' && Number.isFinite(video.currentTime) ? video.currentTime : 0;
+      state.swayPlot = RM.drawSwayChart(swayCtx, {
+        samples: state.swaySamples,
+        duration: duration,
+        currentTime: current,
+        target: state.swayTarget,
+        emptyLabel: state.mode === 'image' ? '静止画では波形を作りません' : '再生すると動揺を記録します'
+      });
+      if (swayCanvas) {
+        const name = state.swayTarget === 'hip' ? '大転子' : '耳垂';
+        swayCanvas.setAttribute('aria-label', name + 'の前後動揺。波形をタップするとその時刻へ移動します。');
+      }
+    }
+
+    function resizeSwayChart() {
+      if (!swayCanvas || state.step !== 3) return;
+      const rect = swayCanvas.getBoundingClientRect();
+      if (rect.width < 2 || rect.height < 2) return;
+      const dpr = Math.min(global.devicePixelRatio || 1, 2);
+      const width = Math.max(1, Math.round(rect.width * dpr));
+      const height = Math.max(1, Math.round(rect.height * dpr));
+      if (swayCanvas.width !== width || swayCanvas.height !== height) {
+        swayCanvas.width = width;
+        swayCanvas.height = height;
+      }
+      drawSwayChart();
+    }
+
+    function setSwayTarget(target) {
+      state.swayTarget = target === 'hip' ? 'hip' : 'ear';
+      if (swayEarButton) {
+        const on = state.swayTarget === 'ear';
+        swayEarButton.classList.toggle('is-active', on);
+        swayEarButton.setAttribute('aria-pressed', on ? 'true' : 'false');
+      }
+      if (swayHipButton) {
+        const on = state.swayTarget === 'hip';
+        swayHipButton.classList.toggle('is-active', on);
+        swayHipButton.setAttribute('aria-pressed', on ? 'true' : 'false');
+      }
+      drawSwayChart();
+    }
+
+    function seekFromChart(clientX) {
+      if (state.mode !== 'video' || !Number.isFinite(video.duration) || video.duration <= 0) return;
+      const rect = swayCanvas.getBoundingClientRect();
+      const plot = state.swayPlot || { left: 26, right: Math.max(28, rect.width - 8) };
+      const span = Math.max(1, plot.right - plot.left);
+      const ratio = Math.min(1, Math.max(0, (clientX - rect.left - plot.left) / span));
+      video.pause();
+      video.currentTime = ratio * video.duration;
     }
 
     function paintMeasure(node, text) {
@@ -339,11 +448,13 @@
       if (state.alignment && typeof state.alignment.meanVisibility === 'number') {
         RM.aiDiagnostics.visibility = state.alignment.meanVisibility;
       }
+      recordSway(state.pendingSampleTime);
       refresh();
     }
 
     function onPoseResults(results) {
       state.rawLandmarks = results && results.poseLandmarks ? results.poseLandmarks : null;
+      state.pendingSampleTime = results && Number.isFinite(results.sampleTime) ? results.sampleTime : poseSampleTime();
       if (state.step === 3) recomputeAlignment();
     }
 
@@ -416,7 +527,7 @@
       const tick = function () {
         renderFrameOnly();
         if (state.step === 3 && state.mode === 'video' && !video.paused && !video.ended) {
-          RM.sendToPose(video);
+          requestPose(video);
           state.rafId = requestAnimationFrame(tick);
         } else {
           state.rafId = 0;
@@ -429,6 +540,8 @@
       RM.invalidatePoseQueue();
       state.rawLandmarks = null;
       state.alignment = null;
+      state.swaySamples = [];
+      state.pendingSampleTime = null;
     }
 
     function clearVideo() {
@@ -445,6 +558,7 @@
 
     function resizeCanvas() {
       if (state.step !== 3) return false;
+      resizeSwayChart();
       const rect = wrapper.getBoundingClientRect();
       if (rect.width < 2 || rect.height < 2) return false;
       const dpr = Math.min(global.devicePixelRatio || 1, 2);
@@ -464,8 +578,8 @@
           resizeCanvas();
           if (state.rawLandmarks) recomputeAlignment();
           else renderFrameOnly();
-          if (state.mode === 'video') RM.sendToPose(video);
-          if (state.mode === 'image') RM.sendToPose(still);
+          if (state.mode === 'video') requestPose(video);
+          if (state.mode === 'image') requestPose(still);
         });
       });
     }
@@ -614,7 +728,7 @@
       const next = Math.min(video.duration, Math.max(0, video.currentTime + direction * FRAME_STEP_SECONDS));
       if (Math.abs(next - video.currentTime) < 0.0001) {
         renderFrameOnly();
-        RM.sendToPose(video);
+        requestPose(video);
         return;
       }
       video.currentTime = next;
@@ -703,6 +817,7 @@
     video.addEventListener('timeupdate', function () {
       updateSeek();
       updateTimeLabel();
+      if (state.step === 3) drawSwayChart();
     });
     video.addEventListener('loadedmetadata', function () {
       if (state.mode !== 'video') return;
@@ -715,7 +830,7 @@
       if (state.step === 3) {
         resizeCanvas();
         renderFrameOnly();
-        RM.sendToPose(video);
+        requestPose(video);
       }
     });
     video.addEventListener('seeked', function () {
@@ -723,7 +838,7 @@
       updateSeek();
       updateTimeLabel();
       renderFrameOnly();
-      RM.sendToPose(video);
+      requestPose(video);
     });
 
     function takeFile(input, loader) {
@@ -781,9 +896,30 @@
       }
     });
 
+    if (swayCanvas) {
+      swayCanvas.addEventListener('pointerdown', function (event) {
+        if (event.button != null && event.button !== 0) return;
+        state.swayScrubbing = true;
+        if (typeof swayCanvas.setPointerCapture === 'function') {
+          try { swayCanvas.setPointerCapture(event.pointerId); } catch (error) { /* 既に解放されている */ }
+        }
+        seekFromChart(event.clientX);
+      });
+      swayCanvas.addEventListener('pointermove', function (event) {
+        if (!state.swayScrubbing) return;
+        seekFromChart(event.clientX);
+      });
+      const endSwayScrub = function () { state.swayScrubbing = false; };
+      swayCanvas.addEventListener('pointerup', endSwayScrub);
+      swayCanvas.addEventListener('pointercancel', endSwayScrub);
+    }
+    if (swayEarButton) swayEarButton.addEventListener('click', function () { setSwayTarget('ear'); });
+    if (swayHipButton) swayHipButton.addEventListener('click', function () { setSwayTarget('hip'); });
+
     if (typeof ResizeObserver === 'function') {
       const observer = new ResizeObserver(function () { resizeCanvas(); });
       observer.observe(wrapper);
+      if (swayCanvas) observer.observe(swayCanvas);
     }
     global.addEventListener('resize', resizeCanvas);
     if (global.visualViewport) {

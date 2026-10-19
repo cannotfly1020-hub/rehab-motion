@@ -536,6 +536,178 @@
     };
   }
 
+  function swaySeriesColor(target) {
+    return target === 'hip' ? '#fb923c' : '#22d3ee';
+  }
+
+  function swayPoints(samples, target, xAt, yAt) {
+    const runs = [];
+    let run = [];
+    (samples || []).forEach(function (sample) {
+      const value = sample ? sample[target] : null;
+      if (typeof value !== 'number' || !Number.isFinite(value) || !Number.isFinite(sample.t)) {
+        if (run.length) runs.push(run);
+        run = [];
+        return;
+      }
+      run.push({ x: xAt(sample.t), y: yAt(value), value: value, t: sample.t });
+    });
+    if (run.length) runs.push(run);
+    return runs;
+  }
+
+  function traceSmooth(ctx, points) {
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    if (points.length === 1) return;
+    for (let i = 0; i < points.length - 1; i += 1) {
+      const p0 = points[Math.max(0, i - 1)];
+      const p1 = points[i];
+      const p2 = points[i + 1];
+      const p3 = points[Math.min(points.length - 1, i + 2)];
+      ctx.bezierCurveTo(
+        p1.x + (p2.x - p0.x) / 6,
+        p1.y + (p2.y - p0.y) / 6,
+        p2.x - (p3.x - p1.x) / 6,
+        p2.y - (p3.y - p1.y) / 6,
+        p2.x,
+        p2.y
+      );
+    }
+  }
+
+  /**
+   * 前後動揺のタイムライン。正の cm は前方で上、負の cm は後方で下。
+   * 戻り値の plot は CSS ピクセル。タップ位置から時刻を決める。
+   */
+  RM.drawSwayChart = function drawSwayChart(ctx, model) {
+    if (!ctx) return null;
+    const canvas = ctx.canvas;
+    const cssW = Math.max(1, canvas.clientWidth || (model && model.width) || 1);
+    const cssH = Math.max(1, canvas.clientHeight || (model && model.height) || 56);
+    const scale = canvas.width / cssW || 1;
+    const safe = model || {};
+    const target = safe.target === 'hip' ? 'hip' : 'ear';
+    const samples = safe.samples || [];
+    const duration = Number.isFinite(safe.duration) && safe.duration > 0 ? safe.duration : 0;
+    const current = Number.isFinite(safe.currentTime) ? safe.currentTime : 0;
+    const color = swaySeriesColor(target);
+
+    const plot = {
+      left: 26,
+      right: Math.max(28, cssW - 8),
+      top: 14,
+      bottom: Math.max(16, cssH - 8)
+    };
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    let peak = 2;
+    samples.forEach(function (sample) {
+      const value = sample ? sample[target] : null;
+      if (typeof value === 'number' && Number.isFinite(value)) peak = Math.max(peak, Math.abs(value));
+    });
+    const range = Math.max(2, peak * 1.2);
+    const midY = (plot.top + plot.bottom) / 2;
+
+    function xAt(time) {
+      const span = plot.right - plot.left;
+      if (duration <= 0) return plot.left + span / 2;
+      const ratio = Math.min(1, Math.max(0, time / duration));
+      return plot.left + span * ratio;
+    }
+    function yAt(cm) {
+      const span = plot.bottom - plot.top;
+      const ratio = (range - cm) / (range * 2);
+      return plot.top + span * ratio;
+    }
+
+    ctx.save();
+    ctx.scale(scale, scale);
+
+    ctx.beginPath();
+    ctx.moveTo(plot.left, midY);
+    ctx.lineTo(plot.right, midY);
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(16, 185, 129, 0.75)';
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.font = '600 9px ' + FONT;
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+    ctx.textAlign = 'left';
+    ctx.fillText('前', 4, plot.top + 1);
+    ctx.fillText('0', 6, midY);
+    ctx.fillText('後', 4, plot.bottom - 1);
+
+    const runs = swayPoints(samples, target, xAt, yAt);
+    runs.forEach(function (points) {
+      if (points.length < 2) return;
+      traceSmooth(ctx, points);
+      ctx.lineTo(points[points.length - 1].x, midY);
+      ctx.lineTo(points[0].x, midY);
+      ctx.closePath();
+      ctx.fillStyle = target === 'hip' ? 'rgba(251, 146, 60, 0.16)' : 'rgba(34, 211, 238, 0.16)';
+      ctx.fill();
+    });
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.6;
+    ctx.shadowColor = target === 'hip' ? 'rgba(251, 146, 60, 0.45)' : 'rgba(34, 211, 238, 0.45)';
+    ctx.shadowBlur = 6;
+    runs.forEach(function (points) {
+      if (!points.length) return;
+      if (points.length === 1) {
+        ctx.beginPath();
+        ctx.arc(points[0].x, points[0].y, 2.4, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        return;
+      }
+      traceSmooth(ctx, points);
+      ctx.stroke();
+    });
+    ctx.shadowBlur = 0;
+
+    let maxPoint = null;
+    runs.forEach(function (points) {
+      points.forEach(function (point) {
+        if (!maxPoint || Math.abs(point.value) > Math.abs(maxPoint.value)) maxPoint = point;
+      });
+    });
+    if (maxPoint && Math.abs(maxPoint.value) >= 0.05) {
+      ctx.beginPath();
+      ctx.arc(maxPoint.x, maxPoint.y, 2.6, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+    }
+
+    if (duration > 0) {
+      const head = xAt(Math.min(duration, Math.max(0, current)));
+      ctx.beginPath();
+      ctx.moveTo(head, plot.top - 2);
+      ctx.lineTo(head, plot.bottom + 2);
+      ctx.lineWidth = 1.25;
+      ctx.strokeStyle = 'rgba(248, 250, 252, 0.95)';
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.65)';
+      ctx.shadowBlur = 6;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    } else {
+      ctx.font = '600 10px ' + FONT;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+      ctx.fillText(safe.emptyLabel || '再生すると動揺を記録します', (plot.left + plot.right) / 2, midY - 10);
+    }
+
+    ctx.restore();
+    return plot;
+  };
+
   RM.renderFrame = function renderFrame(ctx, frame) {
     if (!ctx) return;
     const canvas = ctx.canvas;

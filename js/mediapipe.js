@@ -24,6 +24,8 @@
   let activeTicket = 0;
   let activeSendStartedAt = 0;
   let queuedImage = null;
+  let queuedSampleTime = null;
+  let activeSampleTime = null;
   let userOnResults = null;
 
   function now() {
@@ -95,8 +97,10 @@
   function pumpQueue() {
     if (!queuedImage || RM.isInferring || !poseReady) return;
     const next = queuedImage;
+    const sampleTime = queuedSampleTime;
     queuedImage = null;
-    RM.sendToPose(next);
+    queuedSampleTime = null;
+    RM.sendToPose(next, sampleTime);
   }
 
   function failSend(ticket, error) {
@@ -137,6 +141,7 @@
       if (activeTicket !== generation) return;
       updateDiagnostics(results);
       if (typeof userOnResults !== 'function') return;
+      if (results && typeof results === 'object') results.sampleTime = activeSampleTime;
       try {
         userOnResults(results);
       } catch (error) {
@@ -172,21 +177,26 @@
   RM.invalidatePoseQueue = function invalidatePoseQueue() {
     generation += 1;
     queuedImage = null;
+    queuedSampleTime = null;
   };
 
-  RM.sendToPose = function sendToPose(source) {
+  RM.sendToPose = function sendToPose(source, sampleTime) {
+    const time = Number.isFinite(sampleTime) ? sampleTime : null;
     if (!isDrawable(source)) return false;
     if (!pose || !poseReady) {
       queuedImage = source;
+      queuedSampleTime = time;
       return false;
     }
     if (RM.isInferring) {
       queuedImage = source;
+      queuedSampleTime = time;
       return false;
     }
 
     const ticket = generation;
     activeTicket = ticket;
+    activeSampleTime = time;
     RM.isInferring = true;
     activeSendStartedAt = now();
     RM.aiDiagnostics.status = 'running';
