@@ -377,7 +377,6 @@
   function drawConnectors(ctx, canvas, alignment, scale) {
     const originX = alignment.originX;
     const joints = [alignment.points.ear, alignment.points.shoulder, alignment.points.hip];
-    const placed = [];
     ctx.save();
     ctx.lineCap = 'round';
     ctx.setLineDash([]);
@@ -393,14 +392,6 @@
         ctx.stroke();
       }
       drawDot(ctx, point, color, 4.5 * scale, scale);
-      const text = point.label + ' ' + (typeof RM.formatSignedCm === 'function'
-        ? RM.formatSignedCm(point.cm)
-        : '—');
-      if (typeof point.cm === 'number' || point.visibility < thresholds().minVisibility) {
-        const shown = typeof point.cm === 'number' ? text : point.label + ' 視認不足';
-        const at = placeBadge(point, measureBadge(ctx, shown, scale), scale, canvas, placed);
-        drawBadge(ctx, at.x, at.y, shown, color, scale);
-      }
     });
 
     if (alignment.points.knee && alignment.points.knee.visibility >= thresholds().drawVisibility) {
@@ -413,13 +404,6 @@
       ctx.shadowBlur = 8 * scale;
       drawDot(ctx, alignment.points.ankle, '#34d399', 6.2 * scale, scale);
       ctx.restore();
-    }
-
-    if (alignment.points.knee && alignment.points.knee.visibility >= thresholds().drawVisibility
-      && typeof alignment.kneeAngleDeg === 'number') {
-      const label = clinicalKneeLabel(alignment.kneeAngleDeg);
-      const at = placeBadge(alignment.points.knee, measureBadge(ctx, label, scale), scale, canvas, placed);
-      drawBadge(ctx, at.x, at.y, label, kneeColor(alignment.kneeAngleDeg), scale);
     }
     ctx.restore();
   }

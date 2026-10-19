@@ -135,30 +135,41 @@
             height="480"
             aria-label="矢状面姿勢アライメント。左上をタップするとAI認識ステータスの表示を切り替えます。"
           ></canvas>
-        </div>
-
-        <div class="bottom-panel">
-          <div class="sway-chart" id="sway-chart">
-            <canvas id="sway-chart-canvas" width="640" height="56" aria-label="前後動揺のタイムライン。耳垂が初期表示です。波形をタップするとその時刻へ移動します。"></canvas>
-            <div class="sway-legend" role="group" aria-label="動揺の表示対象">
-              <button type="button" id="sway-ear" class="sway-key is-active" data-joint="ear" aria-pressed="true">耳垂</button>
-              <button type="button" id="sway-hip" class="sway-key" data-joint="hip" aria-pressed="false">大転子</button>
-            </div>
-          </div>
-          <div class="transport" aria-label="動画操作">
-            <button type="button" id="btn-step-back" class="btn" aria-label="1コマ戻す" disabled>−1F</button>
-            <button type="button" id="btn-play" class="btn" aria-pressed="false" disabled>再生</button>
-            <button type="button" id="btn-step-forward" class="btn" aria-label="1コマ進める" disabled>+1F</button>
-            <input id="seek-bar" type="range" min="0" max="1000" value="0" step="1" aria-label="再生位置" disabled>
-            <span id="time-label" class="time-label">00:00 / 00:00</span>
-          </div>
-
-          <div class="rom-bar">
-            <button type="button" id="btn-rom" class="rom-toggle" aria-expanded="false" aria-controls="rom-drawer">
-              <span aria-hidden="true">📐</span> ROM詳細
-            </button>
-          </div>
-          <div class="sheet-slot">
+          <aside class="side-hud side-hud-left" aria-label="左右偏位">
+            <article class="hud-metric" id="metric-ear" data-tone="none">
+              <span class="hud-name">耳垂</span>
+              <span class="hud-dir"></span>
+              <p class="metric-value tabular-nums">—</p>
+            </article>
+            <article class="hud-metric" id="metric-shoulder" data-tone="none">
+              <span class="hud-name">肩峰</span>
+              <span class="hud-dir"></span>
+              <p class="metric-value tabular-nums">—</p>
+            </article>
+            <article class="hud-metric" id="metric-hip" data-tone="none">
+              <span class="hud-name">大転子</span>
+              <span class="hud-dir"></span>
+              <p class="metric-value tabular-nums">—</p>
+            </article>
+          </aside>
+          <aside class="side-hud side-hud-right" aria-label="角度">
+            <article class="hud-metric" id="metric-knee" data-tone="none">
+              <span class="hud-name">膝</span>
+              <span class="hud-dir"></span>
+              <p class="metric-value tabular-nums">—</p>
+              <p class="metric-sub" id="metric-knee-judge"></p>
+            </article>
+            <article class="hud-metric" id="metric-trunk" data-tone="none">
+              <span class="hud-name">体幹</span>
+              <span class="hud-dir"></span>
+              <p class="metric-value tabular-nums">—</p>
+            </article>
+            <article class="hud-metric" id="metric-neck" data-tone="none">
+              <span class="hud-name">頚部</span>
+              <span class="hud-dir"></span>
+              <p class="metric-value tabular-nums">—</p>
+            </article>
+          </aside>
           <div id="rom-drawer" class="rom-drawer" aria-hidden="true">
             <div class="rom-drawer-inner">
               <div class="rom-panel">
@@ -219,39 +230,27 @@
               </div>
             </div>
           </div>
+        </div>
 
-          <section class="summary" aria-label="臨床指標サマリー">
-            <div class="summary-head">
-              <h3>臨床指標</h3>
-              <p class="legend">
-                <span class="swatch swatch-ok" aria-hidden="true"></span>±1.5 cm
-                <span class="swatch swatch-warn" aria-hidden="true"></span>3.0 cmまで
-                <span class="swatch swatch-alert" aria-hidden="true"></span>3.0 cm超
-                ／ 膝は3°を超える過伸展で反張膝、5°を超える屈曲で屈曲拘縮疑い
-              </p>
+        <div class="bottom-panel">
+          <div class="sway-chart" id="sway-chart">
+            <canvas id="sway-chart-canvas" width="640" height="44" aria-label="前後動揺のタイムライン。耳垂が初期表示です。波形をタップするとその時刻へ移動します。"></canvas>
+            <div class="sway-legend" role="group" aria-label="動揺の表示対象">
+              <button type="button" id="sway-ear" class="sway-key is-active" data-joint="ear" aria-pressed="true">耳垂</button>
+              <button type="button" id="sway-hip" class="sway-key" data-joint="hip" aria-pressed="false">大転子</button>
             </div>
-            <div class="metrics">
-              <article class="metric" id="metric-ear" data-tone="none">
-                <h3>耳垂偏位</h3>
-                <p class="metric-value">—</p>
-              </article>
-              <article class="metric" id="metric-shoulder" data-tone="none">
-                <h3>肩峰偏位</h3>
-                <p class="metric-value">—</p>
-              </article>
-              <article class="metric" id="metric-hip" data-tone="none">
-                <h3>大転子偏位</h3>
-                <p class="metric-value">—</p>
-              </article>
-              <article class="metric" id="metric-knee" data-tone="none">
-                <h3>膝角度 / 反張膝</h3>
-                <p class="metric-value">—</p>
-                <p class="metric-sub" id="metric-knee-judge">—</p>
-              </article>
-            </div>
-            <p id="measure-note" class="measure-note">画像の上下を鉛直とみなします。参考表示であり、診断は有資格者が行ってください。</p>
-          </section>
           </div>
+          <div class="transport" aria-label="動画操作">
+            <button type="button" id="btn-step-back" class="btn" aria-label="1コマ戻す" disabled>−1F</button>
+            <button type="button" id="btn-play" class="btn" aria-pressed="false" disabled>再生</button>
+            <button type="button" id="btn-step-forward" class="btn" aria-label="1コマ進める" disabled>+1F</button>
+            <div class="seek-stack">
+              <span id="time-label" class="time-label">00:00 / 00:00</span>
+              <input id="seek-bar" type="range" min="0" max="1000" value="0" step="1" aria-label="再生位置" disabled>
+            </div>
+            <button type="button" id="btn-rom" class="btn rom-toggle" aria-expanded="false" aria-controls="rom-drawer">ROM</button>
+          </div>
+          <p id="measure-note" class="measure-note visually-hidden">画像の上下を鉛直とみなします。参考表示であり、診断は有資格者が行ってください。</p>
         </div>
       </section>
     </main>

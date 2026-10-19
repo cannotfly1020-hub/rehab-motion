@@ -175,6 +175,7 @@
           hint: stageHint()
         });
         canvas.setAttribute('aria-label', canvasLabel());
+        syncPillarbox();
         drawSwayChart();
       } catch (error) {
         console.error('[RehabMotion] render failed', error);
@@ -297,32 +298,58 @@
       node.appendChild(unit);
     }
 
+    function splitClinical(text) {
+      const raw = String(text || '—');
+      if (raw === '—') return { dir: '', value: '—' };
+      const match = raw.match(/^(正中|前|後|屈曲|伸展位|過伸展|伸展|前傾|後傾|垂直|前屈|後屈|中間位)\s+(.+)$/);
+      if (!match) return { dir: '', value: raw };
+      return { dir: match[1], value: match[2] };
+    }
+
     function setMetric(id, text, tone) {
       const node = document.getElementById(id);
       if (!node) return;
+      const parts = splitClinical(text);
+      const dirNode = node.querySelector('.hud-dir');
+      if (dirNode && dirNode.textContent !== parts.dir) dirNode.textContent = parts.dir;
       const value = node.querySelector('.metric-value');
-      if (value) paintMeasure(value, text);
+      if (value) paintMeasure(value, parts.value);
       if (node.dataset.tone !== tone) node.dataset.tone = tone;
+    }
+
+    function setAngleMetric(id, view) {
+      if (!view || view.val === '—') {
+        setMetric(id, '—', 'none');
+        return;
+      }
+      const tone = view.status === 'alert' || view.status === 'warn' || view.status === 'ok'
+        ? view.status
+        : (view.isWarning ? 'warn' : 'ok');
+      setMetric(id, view.text, tone);
     }
 
     function updateSummary() {
       const alignment = state.alignment;
       const judge = document.getElementById('metric-knee-judge');
+      const format = RM.ClinicalAngleFormatter;
       if (!alignment || !alignment.ok || !alignment.points) {
         setMetric('metric-ear', '—', 'none');
         setMetric('metric-shoulder', '—', 'none');
         setMetric('metric-hip', '—', 'none');
         setMetric('metric-knee', '—', 'none');
-        if (judge) judge.textContent = '—';
+        setMetric('metric-trunk', '—', 'none');
+        setMetric('metric-neck', '—', 'none');
+        if (judge) judge.textContent = '';
       } else {
         setMetric('metric-ear', RM.formatDeviation(alignment.points.ear.cm), RM.deviationTone(alignment.points.ear.cm));
         setMetric('metric-shoulder', RM.formatDeviation(alignment.points.shoulder.cm), RM.deviationTone(alignment.points.shoulder.cm));
         setMetric('metric-hip', RM.formatDeviation(alignment.points.hip.cm), RM.deviationTone(alignment.points.hip.cm));
-        const kneeView = RM.ClinicalAngleFormatter.formatKnee(alignment.kneeAngleDeg);
+        const kneeView = format.formatKnee(alignment.kneeAngleDeg);
         setMetric('metric-knee', kneeView.text, RM.kneeTone(alignment.kneeAngleDeg));
-        if (judge) {
-          judge.textContent = kneeView.val === '—' ? '—' : (kneeView.badge || '');
-        }
+        if (judge) judge.textContent = kneeView.val === '—' ? '' : (kneeView.badge || '');
+        const rom = alignment.rom || {};
+        setAngleMetric('metric-trunk', format.formatTrunk(rom.trunkDeg));
+        setAngleMetric('metric-neck', format.formatNeck(rom.neckDeg));
       }
       updateRom();
       updateNotes();
@@ -556,9 +583,22 @@
       }
     }
 
+    function syncPillarbox() {
+      if (!wrapper || state.step !== 3) return;
+      const rect = wrapper.getBoundingClientRect();
+      const size = currentMediaSize();
+      let bar = Math.round(rect.width * 0.16);
+      if (rect.width > 2 && rect.height > 2 && size.width > 0 && size.height > 0) {
+        const bounds = RM.getAspectFitBounds(rect.width, rect.height, size.width, size.height);
+        bar = Math.max(0, Math.round(bounds.x));
+      }
+      wrapper.style.setProperty('--pillar', bar + 'px');
+    }
+
     function resizeCanvas() {
       if (state.step !== 3) return false;
       resizeSwayChart();
+      syncPillarbox();
       const rect = wrapper.getBoundingClientRect();
       if (rect.width < 2 || rect.height < 2) return false;
       const dpr = Math.min(global.devicePixelRatio || 1, 2);
