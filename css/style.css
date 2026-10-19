@@ -36,7 +36,9 @@ body {
   height: 100%;
   height: 100vh;
   height: 100dvh;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   overscroll-behavior: none;
   background-color: #090d16;
 }
@@ -71,7 +73,9 @@ input {
     max(12px, var(--safe-right))
     0
     max(12px, var(--safe-left));
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .site-header {
@@ -84,7 +88,9 @@ main {
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .header-bar {
@@ -210,7 +216,9 @@ main {
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   animation: step-forward 380ms var(--ease);
 }
 
@@ -853,7 +861,8 @@ input:focus-visible {
   min-height: 0;
   padding-top: 4px;
   padding-bottom: var(--safe-bottom);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .sheet-slot {
@@ -1311,7 +1320,9 @@ input[type="range"] {
   .gallery-hit { min-height: 36px; }
   #step-1.is-active,
   #step-2.is-active {
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     padding-bottom: 4px;
   }
 
