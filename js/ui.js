@@ -427,6 +427,18 @@ function syncPlaneControls() {
   syncSwayKeyLabels();
 }
 
+function showNotice(message) {
+  const toast = document.getElementById('plane-toast');
+  if (!toast) return;
+  toast.textContent = message || '';
+  toast.hidden = false;
+  if (state.toastTimer) global.clearTimeout(state.toastTimer);
+  state.toastTimer = global.setTimeout(function () {
+    toast.hidden = true;
+    state.toastTimer = 0;
+  }, 2200);
+}
+
 function showPlaneToast(plane, mode) {
   const toast = document.getElementById('plane-toast');
   if (!toast) return;
@@ -443,6 +455,98 @@ function showPlaneToast(plane, mode) {
     toast.hidden = true;
     state.toastTimer = 0;
   }, 2200);
+}
+
+function recordMeasure(text, kind) {
+  const value = text == null || text === '' ? '—' : String(text);
+  const uncertainty = value === '—' || typeof RM.formatUncertainty !== 'function'
+    ? ''
+    : RM.formatUncertainty(kind);
+  return { text: value, uncertainty: uncertainty };
+}
+
+function localRecordedAt(date) {
+  function pad(number) { return String(number).padStart(2, '0'); }
+  const offsetMin = -date.getTimezoneOffset();
+  const sign = offsetMin >= 0 ? '+' : '-';
+  const absolute = Math.abs(offsetMin);
+  return date.getFullYear()
+    + '-' + pad(date.getMonth() + 1)
+    + '-' + pad(date.getDate())
+    + 'T' + pad(date.getHours())
+    + ':' + pad(date.getMinutes())
+    + ':' + pad(date.getSeconds())
+    + sign + pad(Math.floor(absolute / 60))
+    + ':' + pad(absolute % 60);
+}
+
+function buildMeasurementRecord() {
+  const format = RM.ClinicalAngleFormatter;
+  const alignment = state.alignment;
+  const frontal = state.frontal;
+  const sagittalOk = !!(alignment && alignment.ok && alignment.points);
+  const frontalOk = !!(frontal && frontal.ok);
+  const showingFrontal = state.plane === 'frontal';
+  const active = showingFrontal ? frontal : alignment;
+  const rom = alignment && alignment.rom ? alignment.rom : {};
+  const version = RM.VERSION || null;
+  const band = RM.UNCERTAINTY || null;
+  let mediaTimeSec = null;
+  if (state.mode === 'video' && video && Number.isFinite(video.currentTime) && video.currentTime >= 0) {
+    mediaTimeSec = Math.round(video.currentTime * 1000) / 1000;
+  }
+  const sagittal = {
+    ear: recordMeasure(sagittalOk ? RM.formatDeviation(alignment.points.ear && alignment.points.ear.cm) : '—', 'cm'),
+    shoulder: recordMeasure(sagittalOk ? RM.formatDeviation(alignment.points.shoulder && alignment.points.shoulder.cm) : '—', 'cm'),
+    hip: recordMeasure(sagittalOk ? RM.formatDeviation(alignment.points.hip && alignment.points.hip.cm) : '—', 'cm'),
+    knee: recordMeasure(sagittalOk && format ? format.formatKnee(alignment.kneeAngleDeg).text : '—', 'joint'),
+    trunk: recordMeasure(sagittalOk && format ? format.formatTrunk(rom.trunkDeg).text : '—', 'joint'),
+    neck: recordMeasure(sagittalOk && format ? format.formatNeck(rom.neckDeg).text : '—', 'joint')
+  };
+  const frontalMeasures = {
+    headTilt: recordMeasure(frontalOk ? frontal.headTilt && frontal.headTilt.text : '—', 'tilt'),
+    shoulderLevel: recordMeasure(frontalOk ? frontal.shoulderLevel && frontal.shoulderLevel.text : '—', 'tilt'),
+    pelvisLevel: recordMeasure(frontalOk ? frontal.pelvisLevel && frontal.pelvisLevel.text : '—', 'tilt'),
+    cog: recordMeasure(frontalOk ? frontal.cogShift && frontal.cogShift.text : '—', 'cm'),
+    kneeRight: recordMeasure(frontalOk ? frontal.rightKnee && frontal.rightKnee.text : '—', 'joint'),
+    kneeLeft: recordMeasure(frontalOk ? frontal.leftKnee && frontal.leftKnee.text : '—', 'joint')
+  };
+  return {
+    recordedAt: localRecordedAt(new Date()),
+    fileName: state.sourceName || '',
+    heightCm: state.heightCm,
+    plane: showingFrontal ? 'frontal' : 'sagittal',
+    mediaTimeSec: mediaTimeSec,
+    version: version ? {
+      model: version.model,
+      engine: version.engine,
+      fullString: version.fullString
+    } : null,
+    uncertainty: band ? {
+      deviationCm: band.deviationCm,
+      jointDeg: band.jointDeg,
+      tiltDeg: band.tiltDeg
+    } : null,
+    ok: showingFrontal ? frontalOk : sagittalOk,
+    warnings: active && active.warnings ? active.warnings.slice() : [],
+    measures: showingFrontal ? frontalMeasures : sagittal,
+    rom: showingFrontal ? {
+      neck: recordMeasure(frontalOk ? frontal.headTilt && frontal.headTilt.text : '—', 'tilt'),
+      shoulder: recordMeasure(frontalOk ? frontal.shoulderLevel && frontal.shoulderLevel.text : '—', 'tilt'),
+      trunk: recordMeasure(frontalOk ? frontal.pelvisLevel && frontal.pelvisLevel.text : '—', 'tilt'),
+      elbow: recordMeasure('—', 'joint'),
+      hip: recordMeasure('—', 'joint'),
+      kneeRight: recordMeasure(frontalOk ? frontal.rightKnee && frontal.rightKnee.text : '—', 'joint'),
+      kneeLeft: recordMeasure(frontalOk ? frontal.leftKnee && frontal.leftKnee.text : '—', 'joint')
+    } : {
+      shoulder: recordMeasure(sagittalOk && format ? format.formatShoulder(rom.shoulderDeg).text : '—', 'joint'),
+      elbow: recordMeasure(sagittalOk && format ? format.formatElbow(rom.elbowDeg).text : '—', 'joint'),
+      neck: recordMeasure(sagittalOk && format ? format.formatNeck(rom.neckDeg).text : '—', 'joint'),
+      trunk: recordMeasure(sagittalOk && format ? format.formatTrunk(rom.trunkDeg).text : '—', 'joint'),
+      hip: recordMeasure(sagittalOk && format ? format.formatHip(rom.hipDeg).text : '—', 'joint'),
+      knee: recordMeasure(sagittalOk && format ? format.formatKnee(rom.kneeDeg).text : '—', 'joint')
+    }
+  };
 }
 
 function formatClock(seconds) {
@@ -532,6 +636,8 @@ function syncPillarbox() {
   RM.updateNotes = updateNotes;
   RM.syncPlaneControls = syncPlaneControls;
   RM.showPlaneToast = showPlaneToast;
+  RM.showNotice = showNotice;
+  RM.buildMeasurementRecord = buildMeasurementRecord;
   RM.formatClock = formatClock;
   RM.updateTimeLabel = updateTimeLabel;
   RM.updateSeek = updateSeek;

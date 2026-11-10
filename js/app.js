@@ -725,6 +725,71 @@
       });
     }
 
+    function exportMeasurementRecord() {
+      if (typeof RM.buildMeasurementRecord !== 'function') return;
+      const record = RM.buildMeasurementRecord();
+      const json = JSON.stringify(record, null, 2);
+      downloadMeasurementRecord(json, record.recordedAt);
+      copyMeasurementRecord(json).then(function (copied) {
+        if (typeof RM.showNotice === 'function') {
+          RM.showNotice(copied
+            ? '記録をコピーし、JSONファイルを保存しました'
+            : 'JSONファイルを保存しました。コピーできませんでした');
+        }
+      });
+    }
+
+    function downloadMeasurementRecord(json, recordedAt) {
+      const stamp = String(recordedAt || '').replace(/[^\d]/g, '').slice(0, 14);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'rehab-motion-' + (stamp || 'record') + '.json';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      global.setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    }
+
+    function copyMeasurementRecord(text) {
+      return new Promise(function (resolve) {
+        const area = document.createElement('textarea');
+        area.value = text;
+        area.setAttribute('aria-hidden', 'true');
+        area.style.position = 'fixed';
+        area.style.left = '0';
+        area.style.top = '0';
+        area.style.opacity = '0';
+        area.style.fontSize = '16px';
+        document.body.appendChild(area);
+        area.focus();
+        area.select();
+        if (typeof area.setSelectionRange === 'function') area.setSelectionRange(0, area.value.length);
+        let copied = false;
+        try {
+          copied = document.execCommand('copy');
+        } catch (error) {
+          copied = false;
+        }
+        document.body.removeChild(area);
+        if (copied) {
+          resolve(true);
+          return;
+        }
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+          navigator.clipboard.writeText(text).then(function () { resolve(true); }, function () { resolve(false); });
+          return;
+        }
+        resolve(false);
+      });
+    }
+
+    const exportButton = document.getElementById('btn-export-record');
+    if (exportButton) {
+      exportButton.addEventListener('click', exportMeasurementRecord);
+    }
+
     playButton.addEventListener('click', togglePlay);
     frameBackButton.addEventListener('click', function () { stepFrame(-1); });
     frameForwardButton.addEventListener('click', function () { stepFrame(1); });
