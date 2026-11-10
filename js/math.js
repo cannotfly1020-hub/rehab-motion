@@ -863,6 +863,11 @@
       y: (leftHip.y + rightHip.y) / 2,
       visibility: Math.min(leftHip.visibility, rightHip.visibility)
     } : null;
+    const cogHeadCm = shiftCm(headCenter);
+    const cogSternumCm = shiftCm(sternum);
+    const cogPelvisCm = shiftCm(pubis);
+    const kneeRightCm = pointVisible(rightKnee) ? shiftCm(rightKnee) : null;
+    const kneeLeftCm = pointVisible(leftKnee) ? shiftCm(leftKnee) : null;
 
     return {
       ok: true,
@@ -878,6 +883,13 @@
       headShift: lateralView(shiftCm(headCenter)),
       sternumShift: lateralView(shiftCm(sternum)),
       cogShift: lateralView(shiftCm(pubis)),
+      swayValues: {
+        head: cogHeadCm,
+        shoulder: cogSternumCm,
+        hip: cogPelvisCm,
+        kneeRight: kneeRightCm,
+        kneeLeft: kneeLeftCm
+      },
       leftKnee: frontalKneeView(leftHip, leftKnee, leftAnkle, originX),
       rightKnee: frontalKneeView(rightHip, rightKnee, rightAnkle, originX),
       points: {
