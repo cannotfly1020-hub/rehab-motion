@@ -529,18 +529,45 @@
     if (target === 'hip') {
       return { stroke: '#fb923c', fill: 'rgba(251, 146, 60, 0.16)', shadow: 'rgba(251, 146, 60, 0.45)' };
     }
-    if (target === 'knee') {
+    if (target === 'knee' || target === 'kneeRight') {
       return { stroke: '#f472b6', fill: 'rgba(244, 114, 182, 0.16)', shadow: 'rgba(244, 114, 182, 0.45)' };
     }
     return { stroke: '#22d3ee', fill: 'rgba(34, 211, 238, 0.16)', shadow: 'rgba(34, 211, 238, 0.45)' };
+  }
+
+  function normalizeSwayTarget(target) {
+    if (target === 'head' || target === 'ear' || target === 'shoulder' || target === 'hip' || target === 'knee' || target === 'kneeRight') {
+      return target;
+    }
+    return 'ear';
+  }
+
+  function swayPlane(model) {
+    if (model && (model.plane === 'frontal' || model.plane === 'sagittal')) return model.plane;
+    const state = RM.state;
+    return state && state.plane === 'frontal' ? 'frontal' : 'sagittal';
+  }
+
+  function swaySampleValue(sample, target) {
+    if (!sample) return null;
+    const keys = target === 'head' ? ['head', 'ear']
+      : target === 'ear' ? ['ear', 'head']
+        : target === 'kneeRight' ? ['kneeRight', 'knee']
+          : target === 'knee' ? ['knee', 'kneeRight']
+            : [target];
+    for (let i = 0; i < keys.length; i += 1) {
+      const value = sample[keys[i]];
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+    }
+    return null;
   }
 
   function swayPoints(samples, target, xAt, yAt) {
     const runs = [];
     let run = [];
     (samples || []).forEach(function (sample) {
-      const value = sample ? sample[target] : null;
-      if (typeof value !== 'number' || !Number.isFinite(value) || !Number.isFinite(sample.t)) {
+      const value = swaySampleValue(sample, target);
+      if (!sample || value === null || !Number.isFinite(sample.t)) {
         if (run.length) runs.push(run);
         run = [];
         return;
@@ -572,7 +599,8 @@
   }
 
   /**
-   * 前後動揺のタイムライン。正の cm は前方で上、負の cm は後方で下。
+   * 動揺のタイムライン。矢状面は正が前方で上、前額面は正が本人の右で上。
+   * model.plane が無ければ RM.state.plane を使う。
    * 戻り値の plot は CSS ピクセル。タップ位置から時刻を決める。
    */
   RM.drawSwayChart = function drawSwayChart(ctx, model) {
@@ -582,9 +610,8 @@
     const cssH = Math.max(1, canvas.clientHeight || (model && model.height) || 56);
     const scale = canvas.width / cssW || 1;
     const safe = model || {};
-    const target = safe.target === 'shoulder' || safe.target === 'hip' || safe.target === 'knee'
-      ? safe.target
-      : 'ear';
+    const target = normalizeSwayTarget(safe.target);
+    const plane = swayPlane(safe);
     const samples = safe.samples || [];
     const duration = Number.isFinite(safe.duration) && safe.duration > 0 ? safe.duration : 0;
     const current = Number.isFinite(safe.currentTime) ? safe.currentTime : 0;
@@ -602,8 +629,8 @@
 
     let peak = 2;
     samples.forEach(function (sample) {
-      const value = sample ? sample[target] : null;
-      if (typeof value === 'number' && Number.isFinite(value)) peak = Math.max(peak, Math.abs(value));
+      const value = swaySampleValue(sample, target);
+      if (value !== null) peak = Math.max(peak, Math.abs(value));
     });
     const range = Math.max(2, peak * 1.2);
     const midY = (plot.top + plot.bottom) / 2;
@@ -623,6 +650,13 @@
     ctx.save();
     ctx.scale(scale, scale);
 
+    const frontal = plane === 'frontal';
+    const topLabel = frontal ? '右' : '前';
+    const midLabel = frontal ? '正中 0 cm' : '0 cm';
+    const bottomLabel = frontal ? '左' : '後';
+    ctx.font = '600 9px ' + FONT;
+    plot.left = Math.max(26, Math.ceil(ctx.measureText(midLabel).width) + 8);
+
     ctx.beginPath();
     ctx.moveTo(plot.left, midY);
     ctx.lineTo(plot.right, midY);
@@ -632,13 +666,12 @@
     ctx.stroke();
     ctx.setLineDash([]);
 
-    ctx.font = '600 9px ' + FONT;
     ctx.textBaseline = 'middle';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
     ctx.textAlign = 'left';
-    ctx.fillText('前', 4, plot.top + 1);
-    ctx.fillText('0', 6, midY);
-    ctx.fillText('後', 4, plot.bottom - 1);
+    ctx.fillText(topLabel, 4, plot.top + 1);
+    ctx.fillText(midLabel, 4, midY);
+    ctx.fillText(bottomLabel, 4, plot.bottom - 1);
 
     const runs = swayPoints(samples, target, xAt, yAt);
     runs.forEach(function (points) {

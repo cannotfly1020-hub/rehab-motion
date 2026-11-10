@@ -46,12 +46,29 @@ function canvasLabel() {
 function setSwayTarget(target) {
   const allowed = { ear: true, shoulder: true, hip: true, knee: true };
   state.swayTarget = allowed[target] ? target : 'ear';
+  syncSwayKeyLabels();
   Array.prototype.forEach.call(swayButtons, function (button) {
     const on = button.getAttribute('data-joint') === state.swayTarget;
     button.classList.toggle('is-active', on);
     button.setAttribute('aria-pressed', on ? 'true' : 'false');
   });
   drawSwayChart();
+}
+
+function syncSwayKeyLabels() {
+  const frontal = state.plane === 'frontal';
+  const text = frontal
+    ? { ear: '頭部', shoulder: '胸骨', hip: '骨盤', knee: '右膝' }
+    : { ear: '耳垂', shoulder: '肩峰', hip: '大転子', knee: '膝' };
+  const aria = frontal
+    ? { ear: '頭部（左右動揺）', shoulder: '胸骨（左右動揺）', hip: '骨盤（左右動揺）', knee: '右膝（左右動揺）' }
+    : { ear: '耳垂（頭部動揺）', shoulder: '肩峰（体幹・胸郭動揺）', hip: '大転子（骨盤動揺）', knee: '膝（膝関節動揺）' };
+  Array.prototype.forEach.call(swayButtons, function (button) {
+    const key = button.getAttribute('data-joint');
+    if (!text[key]) return;
+    if (button.textContent !== text[key]) button.textContent = text[key];
+    if (button.getAttribute('aria-label') !== aria[key]) button.setAttribute('aria-label', aria[key]);
+  });
 }
 
 function paintMeasure(node, text) {
@@ -182,7 +199,11 @@ function paintRomValue(node, val) {
     node.textContent = '—';
     return;
   }
-  const numeric = String(raw).replace('°', '');
+  if (!/^\d+(?:\.\d+)?°$/.test(raw)) {
+    node.textContent = raw;
+    return;
+  }
+  const numeric = raw.replace('°', '');
   node.appendChild(document.createTextNode(numeric));
   const unit = document.createElement('small');
   unit.textContent = '°';
@@ -209,6 +230,12 @@ function setRom(id, view) {
 }
 
 function updateRom() {
+  syncSwayKeyLabels();
+  if (state.plane === 'frontal') {
+    updateFrontalRom();
+    return;
+  }
+  setRomJoints(false);
   const alignment = state.alignment;
   const rom = alignment && alignment.rom;
   const sideNote = document.getElementById('rom-side');
@@ -232,6 +259,72 @@ function updateRom() {
   if (sideNote) {
     sideNote.textContent = alignment.sideLabel + '側（手前）の腕・体幹・下肢です。前方は' + alignment.facingLabel + '。';
   }
+}
+
+function setRomJoints(frontal) {
+  const names = frontal
+    ? { 'rom-neck': '頭部側屈', 'rom-shoulder': '肩傾斜', 'rom-trunk': '骨盤傾斜', 'rom-knee': '膝アライメント', 'rom-elbow': '肘関節', 'rom-hip': '股関節' }
+    : { 'rom-neck': '頚部', 'rom-shoulder': '肩関節', 'rom-trunk': '体幹', 'rom-knee': '膝関節', 'rom-elbow': '肘関節', 'rom-hip': '股関節' };
+  Object.keys(names).forEach(function (id) {
+    const node = document.getElementById(id);
+    const label = node && node.parentElement ? node.parentElement.querySelector('.rom-joint') : null;
+    if (label && label.textContent !== names[id]) label.textContent = names[id];
+  });
+  const title = document.querySelector('#rom-drawer .rom-head h3');
+  const titleText = frontal ? '前額面アライメント' : '可動域（ROM）詳細';
+  if (title && title.textContent !== titleText) title.textContent = titleText;
+  const note = document.querySelector('#rom-drawer .rom-note');
+  const noteText = frontal
+    ? '前額面の参考値です。再生やシークはそのまま続けられます。'
+    : '矢状面の参考値です。再生やシークはそのまま続けられます。';
+  if (note && note.textContent !== noteText) note.textContent = noteText;
+}
+
+function frontalKneeRom(right, left) {
+  function part(view, side) {
+    if (!view || view.status === 'none' || !view.dir || view.val === '—') return null;
+    return {
+      dir: side + ' ' + view.dir,
+      val: view.val,
+      badge: view.badge ? side + ' ' + view.badge : '',
+      status: view.status || 'ok'
+    };
+  }
+  const parts = [part(right, '右'), part(left, '左')].filter(Boolean);
+  if (!parts.length) return null;
+  let status = 'ok';
+  parts.forEach(function (partView) {
+    if (partView.status === 'alert' || (partView.status === 'warn' && status !== 'alert')) status = partView.status;
+  });
+  return {
+    dir: parts.map(function (partView) { return partView.dir; }).join(' / '),
+    val: parts.map(function (partView) { return partView.val; }).join(' / '),
+    badge: parts.map(function (partView) { return partView.badge; }).filter(Boolean).join(' / '),
+    status: status
+  };
+}
+
+function updateFrontalRom() {
+  const frontal = state.frontal;
+  const sideNote = document.getElementById('rom-side');
+  setRomJoints(true);
+  if (!frontal || !frontal.ok) {
+    setRom('rom-neck', null);
+    setRom('rom-shoulder', null);
+    setRom('rom-trunk', null);
+    setRom('rom-knee', null);
+    setRom('rom-elbow', null);
+    setRom('rom-hip', null);
+    if (sideNote) sideNote.textContent = '前額面の傾斜を計測できません。';
+    return;
+  }
+  setRom('rom-neck', frontal.headTilt);
+  setRom('rom-shoulder', frontal.shoulderLevel);
+  setRom('rom-trunk', frontal.pelvisLevel);
+  setRom('rom-knee', frontalKneeRom(frontal.rightKnee, frontal.leftKnee));
+  setRom('rom-elbow', null);
+  setRom('rom-hip', null);
+  if (sideNote) sideNote.textContent = '頭部側屈、肩と骨盤の傾斜、左右の膝アライメントです。';
 }
 
 function setRomOpen(open) {
@@ -281,6 +374,7 @@ function syncPlaneControls() {
     frontal.classList.toggle('is-active', on);
     frontal.setAttribute('aria-pressed', on ? 'true' : 'false');
   }
+  syncSwayKeyLabels();
 }
 
 function showPlaneToast(plane) {
