@@ -92,7 +92,7 @@ function paintMeasure(node, text) {
 }
 
 function splitClinical(text) {
-  const raw = String(text || '—');
+  const raw = text == null || text === '' ? '—' : String(text);
   if (raw === '—') return { dir: '', value: '—' };
   if (raw === '正常アライメント') return { dir: '正常アライメント', value: '' };
   const match = raw.match(/^(右偏位|左偏位|右下がり|左下がり|右側屈|左側屈|正常アライメント|正中|前|後|屈曲|伸展位|過伸展|伸展|前傾|後傾|垂直|前屈|後屈|中間位|外反|内反|水平)\s+(.+)$/);
@@ -103,12 +103,14 @@ function splitClinical(text) {
 function setMetric(id, text, tone) {
   const node = document.getElementById(id);
   if (!node) return;
-  const parts = splitClinical(text);
+  const safe = text == null || text === '' ? '—' : String(text);
+  const parts = splitClinical(safe);
   const dirNode = node.querySelector('.hud-dir');
   if (dirNode && dirNode.textContent !== parts.dir) dirNode.textContent = parts.dir;
   const value = node.querySelector('.metric-value');
-  if (value) paintMeasure(value, parts.value);
-  if (node.dataset.tone !== tone) node.dataset.tone = tone;
+  if (value) paintMeasure(value, parts.value || '—');
+  const nextTone = safe === '—' ? 'none' : (tone || 'none');
+  if (node.dataset.tone !== nextTone) node.dataset.tone = nextTone;
 }
 
 function setAngleMetric(id, view) {
@@ -128,6 +130,13 @@ function setClinicalBadge(id, view) {
   node.textContent = view && view.badge ? view.badge : '';
 }
 
+function frontalMetric(view) {
+  if (!view || view.text == null || view.text === '' || view.text === '—' || view.val === '—') {
+    return { text: '—', status: 'none' };
+  }
+  return { text: view.text, status: view.status || 'none' };
+}
+
 function updateFrontalSummary() {
   const frontal = state.frontal;
   if (!frontal || !frontal.ok) {
@@ -141,14 +150,20 @@ function updateFrontalSummary() {
     setClinicalBadge('metric-knee-left-judge', null);
     return;
   }
-  setMetric('metric-head-tilt', frontal.headTilt.text, frontal.headTilt.status);
-  setMetric('metric-shoulder-level', frontal.shoulderLevel.text, frontal.shoulderLevel.status);
-  setMetric('metric-pelvis-level', frontal.pelvisLevel.text, frontal.pelvisLevel.status);
-  setMetric('metric-cog', frontal.cogShift.text, frontal.cogShift.status);
-  setMetric('metric-knee-right', frontal.rightKnee.text, frontal.rightKnee.status);
-  setMetric('metric-knee-left', frontal.leftKnee.text, frontal.leftKnee.status);
-  setClinicalBadge('metric-knee-right-judge', frontal.rightKnee);
-  setClinicalBadge('metric-knee-left-judge', frontal.leftKnee);
+  const head = frontalMetric(frontal.headTilt);
+  const shoulder = frontalMetric(frontal.shoulderLevel);
+  const pelvis = frontalMetric(frontal.pelvisLevel);
+  const cog = frontalMetric(frontal.cogShift);
+  const rightKnee = frontalMetric(frontal.rightKnee);
+  const leftKnee = frontalMetric(frontal.leftKnee);
+  setMetric('metric-head-tilt', head.text, head.status);
+  setMetric('metric-shoulder-level', shoulder.text, shoulder.status);
+  setMetric('metric-pelvis-level', pelvis.text, pelvis.status);
+  setMetric('metric-cog', cog.text, cog.status);
+  setMetric('metric-knee-right', rightKnee.text, rightKnee.status);
+  setMetric('metric-knee-left', leftKnee.text, leftKnee.status);
+  setClinicalBadge('metric-knee-right-judge', rightKnee.text === '—' ? null : frontal.rightKnee);
+  setClinicalBadge('metric-knee-left-judge', leftKnee.text === '—' ? null : frontal.leftKnee);
 }
 
 function updateSummary() {
@@ -170,9 +185,9 @@ function updateSummary() {
     setMetric('metric-neck', '—', 'none');
     if (judge) judge.textContent = '';
   } else {
-    setMetric('metric-ear', RM.formatDeviation(alignment.points.ear.cm), RM.deviationTone(alignment.points.ear.cm));
-    setMetric('metric-shoulder', RM.formatDeviation(alignment.points.shoulder.cm), RM.deviationTone(alignment.points.shoulder.cm));
-    setMetric('metric-hip', RM.formatDeviation(alignment.points.hip.cm), RM.deviationTone(alignment.points.hip.cm));
+    setMetric('metric-ear', RM.formatDeviation(alignment.points.ear && alignment.points.ear.cm), RM.deviationTone(alignment.points.ear && alignment.points.ear.cm));
+    setMetric('metric-shoulder', RM.formatDeviation(alignment.points.shoulder && alignment.points.shoulder.cm), RM.deviationTone(alignment.points.shoulder && alignment.points.shoulder.cm));
+    setMetric('metric-hip', RM.formatDeviation(alignment.points.hip && alignment.points.hip.cm), RM.deviationTone(alignment.points.hip && alignment.points.hip.cm));
     const kneeView = format.formatKnee(alignment.kneeAngleDeg);
     setMetric('metric-knee', kneeView.text, RM.kneeTone(alignment.kneeAngleDeg));
     if (judge) judge.textContent = kneeView.val === '—' ? '' : (kneeView.badge || '');
@@ -343,21 +358,28 @@ function setRomOpen(open) {
 function updateNotes() {
   const alignment = state.alignment;
   const lines = [];
-  if (state.plane === 'frontal' && state.frontal && state.frontal.ok) {
+  const frontal = state.frontal;
+  if (state.plane === 'frontal' && frontal && frontal.ok) {
     lines.push('前額面として左右対称と水平傾斜を計測しています。');
-    lines.push('校正は身長 ' + state.frontal.heightCm + ' cm の 94% を頭頂〜足首に対応づけています。');
-  } else if (alignment && alignment.ok) {
+    lines.push('校正は身長 ' + frontal.heightCm + ' cm の 94% を頭頂〜足首に対応づけています。');
+  } else if (state.plane !== 'frontal' && alignment && alignment.ok) {
     lines.push(alignment.sideLabel + '側面を計測。前方は' + alignment.facingLabel + '。');
     lines.push('校正は身長 ' + alignment.heightCm + ' cm の 94% を頭頂〜足首に対応づけています。');
   } else if (state.mode !== 'empty') {
-    lines.push('姿勢を計測できません。全身の真横が写るように調整してください。');
+    const source = state.plane === 'frontal' ? frontal : alignment;
+    if (!source || !source.warnings || !source.warnings.length) {
+      lines.push(state.plane === 'frontal'
+        ? '姿勢を計測できません。正面から全身を撮影してください。'
+        : '姿勢を計測できません。全身の真横が写るように調整してください。');
+    }
   }
-  if (alignment && alignment.warnings && alignment.warnings.length) {
-    alignment.warnings.forEach(function (warning) { lines.push(warning); });
+  const source = state.plane === 'frontal' ? frontal : alignment;
+  if (source && source.warnings && source.warnings.length) {
+    source.warnings.forEach(function (warning) { lines.push(warning); });
   }
   lines.push('参考表示です。診断は有資格者が行ってください。');
   const text = lines.join(' ');
-  if (note.textContent !== text) note.textContent = text;
+  if (note && note.textContent !== text) note.textContent = text;
 }
 
 function syncPlaneControls() {
@@ -377,10 +399,16 @@ function syncPlaneControls() {
   syncSwayKeyLabels();
 }
 
-function showPlaneToast(plane) {
+function showPlaneToast(plane, mode) {
   const toast = document.getElementById('plane-toast');
   if (!toast) return;
-  toast.textContent = plane === 'frontal' ? '🤖 正面姿勢を検出しました' : '🤖 側面姿勢を検出しました';
+  if (mode === 'suggest') {
+    toast.textContent = plane === 'frontal'
+      ? '前額面（正面）の可能性があります'
+      : '矢状面（側面）の可能性があります';
+  } else {
+    toast.textContent = plane === 'frontal' ? '🤖 正面姿勢を検出しました' : '🤖 側面姿勢を検出しました';
+  }
   toast.hidden = false;
   if (state.toastTimer) global.clearTimeout(state.toastTimer);
   state.toastTimer = global.setTimeout(function () {

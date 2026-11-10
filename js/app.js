@@ -361,17 +361,29 @@
         state.planeStreak = 1;
         return;
       }
-      if (state.planeLock || state.planeStreak < 2) return;
-      if (detected.plane === state.plane) return;
-      state.plane = detected.plane;
-      syncPlaneControls();
-      showPlaneToast(detected.plane);
+      if (state.planeStreak < 2) return;
+      if (!state.planeSeeded && !state.planeLock) {
+        state.planeSeeded = true;
+        if (state.plane !== detected.plane) {
+          state.plane = detected.plane;
+          syncPlaneControls();
+        }
+        return;
+      }
+      if (detected.plane === state.plane) {
+        state.suggestedPlane = null;
+        return;
+      }
+      if (state.suggestedPlane === detected.plane) return;
+      state.suggestedPlane = detected.plane;
+      showPlaneToast(detected.plane, 'suggest');
     }
 
     function setPlane(plane) {
       if (plane !== 'frontal' && plane !== 'sagittal') return;
       state.planeLock = plane;
       state.plane = plane;
+      state.suggestedPlane = null;
       syncPlaneControls();
       if (state.step === 3) refresh();
     }
@@ -416,6 +428,8 @@
       state.frontal = null;
       state.plane = 'sagittal';
       state.planeLock = null;
+      state.planeSeeded = false;
+      state.suggestedPlane = null;
       state.detectedPlane = 'sagittal';
       state.planeStreak = 0;
       syncPlaneControls();

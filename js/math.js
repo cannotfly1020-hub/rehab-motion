@@ -270,6 +270,42 @@
     }, extra || {});
   }
 
+  function dashMeasure(label) {
+    return {
+      x: null,
+      y: null,
+      visibility: 0,
+      cm: null,
+      deg: null,
+      label: label || '',
+      dir: '',
+      text: '—',
+      val: '—',
+      value: '—',
+      badge: '',
+      status: 'none'
+    };
+  }
+
+  function maskSagittal(heightCm, warnings, extra) {
+    const rom = nullRom();
+    rom.neck = dashMeasure('頚部');
+    rom.trunk = dashMeasure('体幹');
+    return emptyResult(heightCm, warnings, Object.assign({
+      points: {
+        ear: dashMeasure('耳'),
+        shoulder: dashMeasure('肩'),
+        hip: dashMeasure('股関節'),
+        knee: dashMeasure('膝'),
+        ankle: dashMeasure('足首')
+      },
+      rom: rom
+    }, extra || {}));
+  }
+
+  const SAGITTAL_MASK_WARNING = '全身が収まっていないか、身体が斜めを向いています。真横から全身を撮影してください。';
+  const FRONTAL_MASK_WARNING = '全身が収まっていないか、正面から大きく外れています。正面から全身を撮影してください。';
+
   function deviationTone(cm) {
     if (typeof cm !== 'number' || !Number.isFinite(cm)) return 'none';
     const magnitude = Math.abs(cm);
@@ -522,18 +558,8 @@
     const ankleVis = visibilityOf(landmarks[side.ankle]);
     const facing = detectFacing(landmarks, side);
 
-    const leftVis = visibilityOf(landmarks[SIDES.left.ankle]);
-    const rightVis = visibilityOf(landmarks[SIDES.right.ankle]);
-    if (leftVis >= RM.THRESHOLDS.minVisibility && rightVis >= RM.THRESHOLDS.minVisibility) {
-      const separation = Math.abs(landmarks[SIDES.left.ankle].x - landmarks[SIDES.right.ankle].x);
-      if (separation > 0.08) {
-        warnings.push('両足首の間隔が離れすぎています。真横から撮影してください。');
-      }
-    }
-
-    if (ankleVis < RM.THRESHOLDS.minVisibility) {
-      warnings.push('手前側の足首を十分に視認できません。');
-      return emptyResult(heightCm, warnings, {
+    function masked(list) {
+      return maskSagittal(heightCm, list, {
         side: side.key,
         sideLabel: side.label,
         facingSign: facing.facingSign,
@@ -541,21 +567,25 @@
         facingSource: facing.facingSource
       });
     }
+
+    const leftVis = visibilityOf(landmarks[SIDES.left.ankle]);
+    const rightVis = visibilityOf(landmarks[SIDES.right.ankle]);
+    if (leftVis >= RM.THRESHOLDS.minVisibility && rightVis >= RM.THRESHOLDS.minVisibility) {
+      const separation = Math.abs(landmarks[SIDES.left.ankle].x - landmarks[SIDES.right.ankle].x);
+      if (separation > 0.08) return masked([SAGITTAL_MASK_WARNING]);
+    }
+
+    if (ankleVis < RM.THRESHOLDS.minVisibility) return masked([SAGITTAL_MASK_WARNING]);
 
     const ear = toCanvas(landmarks[side.ear], bounds);
     const shoulder = toCanvas(landmarks[side.shoulder], bounds);
     const hip = toCanvas(landmarks[side.hip], bounds);
     const knee = toCanvas(landmarks[side.knee], bounds);
     const ankle = toCanvas(landmarks[side.ankle], bounds);
-    if (!ear || !shoulder || !hip || !knee || !ankle) {
+    if (!ear || ear.visibility < RM.THRESHOLDS.minVisibility) return masked([SAGITTAL_MASK_WARNING]);
+    if (!shoulder || !hip || !knee || !ankle) {
       warnings.push('計測に必要な関節座標が欠けています。');
-      return emptyResult(heightCm, warnings, {
-        side: side.key,
-        sideLabel: side.label,
-        facingSign: facing.facingSign,
-        facingLabel: facingText(facing.facingSign),
-        facingSource: facing.facingSource
-      });
+      return masked(warnings);
     }
     const heel = landmarks[side.heel] ? toCanvas(landmarks[side.heel], bounds) : null;
     const toe = landmarks[side.toe] ? toCanvas(landmarks[side.toe], bounds) : null;
@@ -749,6 +779,24 @@
     return Math.acos(cos) * 180 / Math.PI;
   }
 
+  function frontalFailed(warning) {
+    const dash = dashMeasure('');
+    return {
+      ok: false,
+      plane: 'frontal',
+      warnings: [warning || FRONTAL_MASK_WARNING],
+      swayValues: null,
+      headTilt: dashMeasure('頭部'),
+      shoulderLevel: dashMeasure('肩'),
+      pelvisLevel: dashMeasure('骨盤'),
+      headShift: dashMeasure('頭部'),
+      sternumShift: dashMeasure('胸骨'),
+      cogShift: dashMeasure('骨盤'),
+      leftKnee: dash,
+      rightKnee: dashMeasure('')
+    };
+  }
+
   function frontalKneeView(hip, knee, ankle, midlineX) {
     const empty = { dir: '', text: '—', val: '—', badge: '', status: 'none', deg: null };
     if (!hip || !knee || !ankle) return empty;
@@ -817,8 +865,7 @@
   };
 
   RM.calculateFrontalAlignment = function calculateFrontalAlignment(landmarks, userHeight, canvasWidth, canvasHeight, fitBounds) {
-    const failed = { ok: false, plane: 'frontal', warnings: ['前額面の左右ランドマークが不足しています。'] };
-    if (!landmarks || landmarks.length < 29) return failed;
+    if (!landmarks || landmarks.length < 29) return frontalFailed(FRONTAL_MASK_WARNING);
     const heightCm = normalizeHeight(userHeight);
     const bounds = resolveBounds(canvasWidth, canvasHeight, fitBounds);
     const nose = planePoint(landmarks, 0, bounds);
@@ -832,7 +879,9 @@
     const rightKnee = planePoint(landmarks, 26, bounds);
     const leftAnkle = planePoint(landmarks, 27, bounds);
     const rightAnkle = planePoint(landmarks, 28, bounds);
-    if (!bothVisible(leftAnkle, rightAnkle) || !bothVisible(leftShoulder, rightShoulder)) return failed;
+    if (!bothVisible(leftAnkle, rightAnkle) || !bothVisible(leftShoulder, rightShoulder) || !bothVisible(leftHip, rightHip)) {
+      return frontalFailed(FRONTAL_MASK_WARNING);
+    }
 
     const originX = (leftAnkle.x + rightAnkle.x) / 2;
     const rightSign = anatomicalRightSign(leftShoulder, rightShoulder);
