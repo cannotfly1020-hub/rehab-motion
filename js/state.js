@@ -49,6 +49,7 @@ function saveHeight(value) {
     hudPointer: null,
     heightCm: 160,
     swaySamples: [],
+    swayFrontalSamples: [], // { t, head, shoulder, hip, kneeRight, kneeLeft } の cm 配列。最大 3600 点
     swayTarget: 'ear',
     swayPlot: null,
     swayScrubbing: false,

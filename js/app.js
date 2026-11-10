@@ -184,6 +184,7 @@
 
     function resetSway() {
       state.swaySamples = [];
+      state.swayFrontalSamples = [];
       drawSwayChart();
     }
 
@@ -192,23 +193,14 @@
       return point && typeof point.cm === 'number' ? point.cm : null;
     }
 
-    function recordSway(sampleTime) {
-      if (state.mode !== 'video') return;
-      const time = Number(sampleTime);
-      if (!Number.isFinite(time) || time < 0) return;
-      const alignment = state.alignment;
-      const point = {
-        t: time,
-        ear: swayCm(alignment, 'ear'),
-        shoulder: swayCm(alignment, 'shoulder'),
-        hip: swayCm(alignment, 'hip'),
-        knee: swayCm(alignment, 'knee')
-      };
-      if (point.ear === null && point.shoulder === null && point.hip === null && point.knee === null) return;
-      const samples = state.swaySamples;
+    function finiteCm(value) {
+      return typeof value === 'number' && Number.isFinite(value) ? value : null;
+    }
+
+    function upsertSwaySample(samples, point) {
       let index = 0;
-      while (index < samples.length && samples[index].t < time - 0.045) index += 1;
-      if (index < samples.length && Math.abs(samples[index].t - time) <= 0.05) {
+      while (index < samples.length && samples[index].t < point.t - 0.045) index += 1;
+      if (index < samples.length && Math.abs(samples[index].t - point.t) <= 0.05) {
         samples[index] = point;
       } else {
         samples.splice(index, 0, point);
@@ -216,21 +208,67 @@
       if (samples.length > 3600) samples.splice(0, samples.length - 3600);
     }
 
+    function recordSway(sampleTime) {
+      if (state.mode !== 'video') return;
+      const time = Number(sampleTime);
+      if (!Number.isFinite(time) || time < 0) return;
+      const alignment = state.alignment;
+      const sagittal = {
+        t: time,
+        ear: swayCm(alignment, 'ear'),
+        shoulder: swayCm(alignment, 'shoulder'),
+        hip: swayCm(alignment, 'hip'),
+        knee: swayCm(alignment, 'knee')
+      };
+      if (sagittal.ear !== null || sagittal.shoulder !== null || sagittal.hip !== null || sagittal.knee !== null) {
+        upsertSwaySample(state.swaySamples, sagittal);
+      }
+      const frontal = state.frontal && state.frontal.ok ? state.frontal.swayValues : null;
+      if (!frontal) return;
+      const lateral = {
+        t: time,
+        head: finiteCm(frontal.head),
+        shoulder: finiteCm(frontal.shoulder),
+        hip: finiteCm(frontal.hip),
+        kneeRight: finiteCm(frontal.kneeRight),
+        kneeLeft: finiteCm(frontal.kneeLeft)
+      };
+      if (lateral.head === null && lateral.shoulder === null && lateral.hip === null && lateral.kneeRight === null && lateral.kneeLeft === null) return;
+      upsertSwaySample(state.swayFrontalSamples, lateral);
+    }
+
+    function swayChartSamples() {
+      if (state.plane !== 'frontal') return state.swaySamples;
+      return state.swayFrontalSamples.map(function (sample) {
+        return {
+          t: sample.t,
+          ear: sample.head,
+          shoulder: sample.shoulder,
+          hip: sample.hip,
+          knee: sample.kneeRight
+        };
+      });
+    }
+
     function drawSwayChart() {
       if (!swayCtx || state.step !== 3 || typeof RM.drawSwayChart !== 'function') return;
       const duration = state.mode === 'video' && Number.isFinite(video.duration) ? video.duration : 0;
       const current = state.mode === 'video' && Number.isFinite(video.currentTime) ? video.currentTime : 0;
+      const frontal = state.plane === 'frontal';
       state.swayPlot = RM.drawSwayChart(swayCtx, {
-        samples: state.swaySamples,
+        samples: swayChartSamples(),
         duration: duration,
         currentTime: current,
         target: state.swayTarget,
         emptyLabel: state.mode === 'image' ? '静止画では波形を作りません' : '再生すると動揺を記録します'
       });
       if (swayCanvas) {
-        const names = { ear: '耳垂', shoulder: '肩峰', hip: '大転子', knee: '膝' };
-        const name = names[state.swayTarget] || '耳垂';
-        swayCanvas.setAttribute('aria-label', name + 'の前後動揺。波形をタップするとその時刻へ移動します。');
+        const names = frontal
+          ? { ear: '頭部', shoulder: '胸骨', hip: '骨盤', knee: '右膝' }
+          : { ear: '耳垂', shoulder: '肩峰', hip: '大転子', knee: '膝' };
+        const name = names[state.swayTarget] || (frontal ? '頭部' : '耳垂');
+        const axis = frontal ? '左右動揺' : '前後動揺';
+        swayCanvas.setAttribute('aria-label', name + 'の' + axis + '。波形をタップするとその時刻へ移動します。');
       }
     }
 
@@ -382,6 +420,7 @@
       state.planeStreak = 0;
       syncPlaneControls();
       state.swaySamples = [];
+      state.swayFrontalSamples = [];
       state.pendingSampleTime = null;
     }
 
