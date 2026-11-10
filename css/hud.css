@@ -71,6 +71,26 @@
 .hud-metric[data-tone="alert"] .metric-value,
 .hud-metric[data-tone="alert"] .metric-sub { color: var(--alert); }
 
+.metric-value .uncertainty,
+.rom-value .uncertainty {
+  display: inline-block;
+  margin-left: 0.28em;
+  font-size: 0.62em;
+  font-weight: 620;
+  letter-spacing: 0;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  color: rgba(255, 255, 255, 0.55);
+  vertical-align: 0.15em;
+}
+
+.hud-metric[data-tone="ok"] .metric-value .uncertainty,
+.hud-metric[data-tone="warn"] .metric-value .uncertainty,
+.hud-metric[data-tone="alert"] .metric-value .uncertainty {
+  color: rgba(255, 255, 255, 0.55);
+}
+
 .plane-toggle {
   display: inline-flex;
   flex: 0 0 auto;

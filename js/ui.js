@@ -71,14 +71,36 @@ function syncSwayKeyLabels() {
   });
 }
 
-function paintMeasure(node, text) {
-  const raw = String(text);
-  if (node.dataset.raw === raw) return;
-  node.dataset.raw = raw;
+function uncertaintyKind(id) {
+  const frontal = state.plane === 'frontal';
+  if (id === 'metric-ear' || id === 'metric-shoulder' || id === 'metric-hip' || id === 'metric-cog') return 'cm';
+  if (id === 'metric-head-tilt' || id === 'metric-shoulder-level' || id === 'metric-pelvis-level') return 'tilt';
+  if (frontal && (id === 'rom-neck' || id === 'rom-shoulder' || id === 'rom-trunk')) return 'tilt';
+  if (id === 'metric-knee' || id === 'metric-knee-right' || id === 'metric-knee-left' || id === 'metric-trunk' || id === 'metric-neck' || id === 'rom-shoulder' || id === 'rom-elbow' || id === 'rom-neck' || id === 'rom-trunk' || id === 'rom-hip' || id === 'rom-knee') return 'joint';
+  return '';
+}
+
+function appendUncertainty(node, kind) {
+  if (!kind || typeof RM.formatUncertainty !== 'function') return;
+  const label = RM.formatUncertainty(kind);
+  if (!label) return;
+  const band = document.createElement('span');
+  band.className = 'uncertainty';
+  band.textContent = label;
+  node.appendChild(band);
+}
+
+function paintMeasure(node, text, kind) {
+  const raw = String(text == null ? '—' : text);
+  const stamp = raw + '|' + (kind || '');
+  if (node.dataset.raw === stamp) return;
+  node.dataset.raw = stamp;
   node.textContent = '';
   const match = raw.match(/^(.*?)(\s*)(cm|°)(.*)$/);
+  const showBand = /\d/.test(raw);
   if (!match) {
     node.textContent = raw;
+    if (showBand) appendUncertainty(node, kind);
     return;
   }
   const num = document.createElement('span');
@@ -89,6 +111,7 @@ function paintMeasure(node, text) {
   unit.textContent = match[3] + match[4];
   node.appendChild(num);
   node.appendChild(unit);
+  if (showBand) appendUncertainty(node, kind);
 }
 
 function splitClinical(text) {
@@ -108,7 +131,7 @@ function setMetric(id, text, tone) {
   const dirNode = node.querySelector('.hud-dir');
   if (dirNode && dirNode.textContent !== parts.dir) dirNode.textContent = parts.dir;
   const value = node.querySelector('.metric-value');
-  if (value) paintMeasure(value, parts.value || '—');
+  if (value) paintMeasure(value, parts.value || '—', uncertaintyKind(id));
   const nextTone = safe === '—' ? 'none' : (tone || 'none');
   if (node.dataset.tone !== nextTone) node.dataset.tone = nextTone;
 }
@@ -205,17 +228,20 @@ function clinicalTone(view) {
   return view.isWarning ? 'warn' : 'ok';
 }
 
-function paintRomValue(node, val) {
+function paintRomValue(node, val, kind) {
   const raw = val || '—';
-  if (node.dataset.raw === raw) return;
-  node.dataset.raw = raw;
+  const stamp = raw + '|' + (kind || '');
+  if (node.dataset.raw === stamp) return;
+  node.dataset.raw = stamp;
   node.textContent = '';
   if (raw === '—') {
     node.textContent = '—';
     return;
   }
+  const showBand = /\d/.test(raw);
   if (!/^\d+(?:\.\d+)?°$/.test(raw)) {
     node.textContent = raw;
+    if (showBand) appendUncertainty(node, kind);
     return;
   }
   const numeric = raw.replace('°', '');
@@ -223,13 +249,14 @@ function paintRomValue(node, val) {
   const unit = document.createElement('small');
   unit.textContent = '°';
   node.appendChild(unit);
+  if (showBand) appendUncertainty(node, kind);
 }
 
 function setRom(id, view) {
   const node = document.getElementById(id);
   if (!node) return;
   const missing = !view || view.val === '—';
-  paintRomValue(node, missing ? '—' : view.val);
+  paintRomValue(node, missing ? '—' : view.val, uncertaintyKind(id));
   const dirNode = document.getElementById(id + '-dir');
   const dir = missing ? '' : (view.dir || '');
   if (dirNode && dirNode.textContent !== dir) dirNode.textContent = dir;

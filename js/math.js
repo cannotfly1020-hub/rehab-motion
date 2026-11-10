@@ -14,6 +14,21 @@
     drawVisibility: 0.35
   });
 
+  RM.UNCERTAINTY = Object.freeze({
+    deviationCm: 1.5,
+    jointDeg: 3.5,
+    tiltDeg: 2.0
+  });
+
+  RM.formatUncertainty = function formatUncertainty(kind) {
+    const band = RM.UNCERTAINTY;
+    if (!band) return '';
+    if (kind === 'cm') return '(±' + band.deviationCm.toFixed(1) + ' cm)';
+    if (kind === 'tilt') return '(±' + band.tiltDeg.toFixed(1) + '°)';
+    if (kind === 'joint') return '(±' + band.jointDeg.toFixed(1) + '°)';
+    return '';
+  };
+
   // 頭頂は MediaPipe に無いので、外耳孔の上方を成人比で補う。
   // 頭頂〜外耳孔 ≈ 身長の 7.5%、外耳孔〜外果 ≈ 88.5%。
   const VERTEX_OFFSET_PER_EAR_MALLEOLUS = 0.075 / 0.885;
