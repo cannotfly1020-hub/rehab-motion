@@ -119,7 +119,7 @@
       <section id="step-2" class="step-view" hidden aria-labelledby="step-2-title">
         <p class="eyebrow">Step 2 · Calibrate</p>
         <h2 id="step-2-title">身長入力</h2>
-        <p class="lead">頭頂から外果までを身長の 94% として、偏位を cm に換算します。</p>
+        <p class="lead">頭頂から足首までを身長の 94% として、偏位を cm に換算します。</p>
         <p id="media-name" class="media-name">メディア未選択</p>
 
         <div class="dial">
@@ -172,17 +172,17 @@
           <aside class="side-hud side-hud-left" aria-label="左側の計測">
             <div class="hud-set hud-sagittal">
               <article class="hud-metric" id="metric-ear" data-tone="none">
-                <span class="hud-name">耳垂</span>
+                <span class="hud-name">耳</span>
                 <span class="hud-dir"></span>
                 <p class="metric-value tabular-nums">—</p>
               </article>
               <article class="hud-metric" id="metric-shoulder" data-tone="none">
-                <span class="hud-name">肩峰</span>
+                <span class="hud-name">肩</span>
                 <span class="hud-dir"></span>
                 <p class="metric-value tabular-nums">—</p>
               </article>
               <article class="hud-metric" id="metric-hip" data-tone="none">
-                <span class="hud-name">大転子</span>
+                <span class="hud-name">股関節</span>
                 <span class="hud-dir"></span>
                 <p class="metric-value tabular-nums">—</p>
               </article>
@@ -194,7 +194,7 @@
                 <p class="metric-value tabular-nums">—</p>
               </article>
               <article class="hud-metric" id="metric-shoulder-level" data-tone="none">
-                <span class="hud-name">肩峰</span>
+                <span class="hud-name">肩</span>
                 <span class="hud-dir"></span>
                 <p class="metric-value tabular-nums">—</p>
               </article>
@@ -248,11 +248,11 @@
 
         <div class="bottom-panel">
           <div class="sway-chart" id="sway-chart">
-            <canvas id="sway-chart-canvas" width="640" height="44" aria-label="前後動揺のタイムライン。耳垂が初期表示です。波形をタップするとその時刻へ移動します。"></canvas>
+            <canvas id="sway-chart-canvas" width="640" height="44" aria-label="前後動揺のタイムライン。耳が初期表示です。波形をタップするとその時刻へ移動します。"></canvas>
             <div class="sway-legend" role="group" aria-label="動揺の表示対象">
-              <button type="button" id="sway-ear" class="sway-key is-active" data-joint="ear" aria-pressed="true" aria-label="耳垂（頭部動揺）">耳垂</button>
-              <button type="button" id="sway-shoulder" class="sway-key" data-joint="shoulder" aria-pressed="false" aria-label="肩峰（体幹・胸郭動揺）">肩峰</button>
-              <button type="button" id="sway-hip" class="sway-key" data-joint="hip" aria-pressed="false" aria-label="大転子（骨盤動揺）">大転子</button>
+              <button type="button" id="sway-ear" class="sway-key is-active" data-joint="ear" aria-pressed="true" aria-label="耳（前後動揺）">耳</button>
+              <button type="button" id="sway-shoulder" class="sway-key" data-joint="shoulder" aria-pressed="false" aria-label="肩（前後動揺）">肩</button>
+              <button type="button" id="sway-hip" class="sway-key" data-joint="hip" aria-pressed="false" aria-label="股関節（前後動揺）">股関節</button>
               <button type="button" id="sway-knee" class="sway-key" data-joint="knee" aria-pressed="false" aria-label="膝（膝関節動揺）">膝</button>
             </div>
           </div>

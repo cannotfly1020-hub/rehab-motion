@@ -527,12 +527,12 @@
     if (leftVis >= RM.THRESHOLDS.minVisibility && rightVis >= RM.THRESHOLDS.minVisibility) {
       const separation = Math.abs(landmarks[SIDES.left.ankle].x - landmarks[SIDES.right.ankle].x);
       if (separation > 0.08) {
-        warnings.push('両脚が左右に分離して見えています。真横から撮影してください。');
+        warnings.push('両足首の間隔が離れすぎています。真横から撮影してください。');
       }
     }
 
     if (ankleVis < RM.THRESHOLDS.minVisibility) {
-      warnings.push('手前側の外果を十分に視認できません。');
+      warnings.push('手前側の足首を十分に視認できません。');
       return emptyResult(heightCm, warnings, {
         side: side.key,
         sideLabel: side.label,
@@ -561,11 +561,11 @@
     const toe = landmarks[side.toe] ? toCanvas(landmarks[side.toe], bounds) : null;
     const elbow = landmarks[side.elbow] ? toCanvas(landmarks[side.elbow], bounds) : null;
     const wrist = landmarks[side.wrist] ? toCanvas(landmarks[side.wrist], bounds) : null;
-    ear.label = '耳垂';
-    shoulder.label = '肩峰';
-    hip.label = '大転子';
+    ear.label = '耳';
+    shoulder.label = '肩';
+    hip.label = '股関節';
     knee.label = '膝';
-    ankle.label = '外果';
+    ankle.label = '足首';
     if (heel) heel.label = '踵';
     if (toe) toe.label = 'つま先';
     if (elbow) elbow.label = '肘';
@@ -580,7 +580,7 @@
 
     let px2cm = null;
     if (ear.visibility < RM.THRESHOLDS.minVisibility) {
-      warnings.push('耳孔を十分に視認できないため、スケールを確定できません。');
+      warnings.push('耳を十分に視認できないため、スケールを確定できません。');
     } else if (euclidean < 8 || pixelSpan < Math.max(8, euclidean * 0.5)) {
       warnings.push('立位の真横で、頭から足まで写してください。スケールを確定できません。');
     } else {
@@ -591,7 +591,7 @@
     }
 
     if (facing.facingSource === 'face') {
-      warnings.push('足部の視認性が低いため、鼻と耳孔の位置で前方を推定しています。');
+      warnings.push('足部の視認性が低いため、鼻と耳の位置で前方を推定しています。');
     } else if (facing.facingSource === 'unknown') {
       warnings.push('前後方向を判定できません。つま先と踵、または顔が写るようにしてください。');
     }

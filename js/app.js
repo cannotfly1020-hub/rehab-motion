@@ -265,8 +265,8 @@
       if (swayCanvas) {
         const names = frontal
           ? { ear: '頭部', shoulder: '胸骨', hip: '骨盤', knee: '右膝' }
-          : { ear: '耳垂', shoulder: '肩峰', hip: '大転子', knee: '膝' };
-        const name = names[state.swayTarget] || (frontal ? '頭部' : '耳垂');
+          : { ear: '耳', shoulder: '肩', hip: '股関節', knee: '膝' };
+        const name = names[state.swayTarget] || (frontal ? '頭部' : '耳');
         const axis = frontal ? '左右動揺' : '前後動揺';
         swayCanvas.setAttribute('aria-label', name + 'の' + axis + '。波形をタップするとその時刻へ移動します。');
       }

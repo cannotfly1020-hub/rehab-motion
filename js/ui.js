@@ -27,7 +27,7 @@ function canvasLabel() {
     if (!frontal || !frontal.ok) return base;
     return base
       + ' 頭部 ' + (frontal.headTilt && frontal.headTilt.text)
-      + '、肩峰 ' + (frontal.shoulderLevel && frontal.shoulderLevel.text)
+      + '、肩 ' + (frontal.shoulderLevel && frontal.shoulderLevel.text)
       + '、骨盤 ' + (frontal.pelvisLevel && frontal.pelvisLevel.text)
       + '、重心 ' + (frontal.cogShift && frontal.cogShift.text)
       + '。';
@@ -36,9 +36,9 @@ function canvasLabel() {
   const alignment = state.alignment;
   if (!alignment || !alignment.ok || !alignment.points) return base;
   return base
-    + ' 耳垂 ' + RM.formatDeviation(alignment.points.ear && alignment.points.ear.cm)
-    + '、肩峰 ' + RM.formatDeviation(alignment.points.shoulder && alignment.points.shoulder.cm)
-    + '、大転子 ' + RM.formatDeviation(alignment.points.hip && alignment.points.hip.cm)
+    + ' 耳 ' + RM.formatDeviation(alignment.points.ear && alignment.points.ear.cm)
+    + '、肩 ' + RM.formatDeviation(alignment.points.shoulder && alignment.points.shoulder.cm)
+    + '、股関節 ' + RM.formatDeviation(alignment.points.hip && alignment.points.hip.cm)
     + '、膝 ' + RM.ClinicalAngleFormatter.formatKnee(alignment.kneeAngleDeg).text
     + '。';
 }
@@ -59,10 +59,10 @@ function syncSwayKeyLabels() {
   const frontal = state.plane === 'frontal';
   const text = frontal
     ? { ear: '頭部', shoulder: '胸骨', hip: '骨盤', knee: '右膝' }
-    : { ear: '耳垂', shoulder: '肩峰', hip: '大転子', knee: '膝' };
+    : { ear: '耳', shoulder: '肩', hip: '股関節', knee: '膝' };
   const aria = frontal
     ? { ear: '頭部（左右動揺）', shoulder: '胸骨（左右動揺）', hip: '骨盤（左右動揺）', knee: '右膝（左右動揺）' }
-    : { ear: '耳垂（頭部動揺）', shoulder: '肩峰（体幹・胸郭動揺）', hip: '大転子（骨盤動揺）', knee: '膝（膝関節動揺）' };
+    : { ear: '耳（前後動揺）', shoulder: '肩（前後動揺）', hip: '股関節（前後動揺）', knee: '膝（前後動揺）' };
   Array.prototype.forEach.call(swayButtons, function (button) {
     const key = button.getAttribute('data-joint');
     if (!text[key]) return;
@@ -345,10 +345,10 @@ function updateNotes() {
   const lines = [];
   if (state.plane === 'frontal' && state.frontal && state.frontal.ok) {
     lines.push('前額面として左右対称と水平傾斜を計測しています。');
-    lines.push('校正は身長 ' + state.frontal.heightCm + ' cm の 94% を頭頂〜外果に対応づけています。');
+    lines.push('校正は身長 ' + state.frontal.heightCm + ' cm の 94% を頭頂〜足首に対応づけています。');
   } else if (alignment && alignment.ok) {
     lines.push(alignment.sideLabel + '側面を計測。前方は' + alignment.facingLabel + '。');
-    lines.push('校正は身長 ' + alignment.heightCm + ' cm の 94% を頭頂〜外果に対応づけています。');
+    lines.push('校正は身長 ' + alignment.heightCm + ' cm の 94% を頭頂〜足首に対応づけています。');
   } else if (state.mode !== 'empty') {
     lines.push('姿勢を計測できません。全身の真横が写るように調整してください。');
   }
