@@ -8,7 +8,7 @@
   RM.THRESHOLDS = Object.freeze({
     deviationOkCm: 1.5,
     deviationWarnCm: 3.0,
-    recurvatumDeg: -5,
+    recurvatumDeg: -3,
     flexionNotableDeg: 5,
     minVisibility: 0.5,
     drawVisibility: 0.35
@@ -444,7 +444,7 @@
         return clinicalView({ dir: '中間位', val: '0.0°', text: '中間位 0°', isWarning: false });
       }
       const isAnt = value > 0;
-      const label = isAnt ? '前屈' : '後屈';
+      const label = isAnt ? '頭頚部前傾' : '頭頚部後傾';
       return clinicalView({
         dir: label,
         val: absVal.toFixed(1) + '°',
@@ -503,7 +503,7 @@
         });
       }
       if (value < 0) {
-        const alert = absVal > 3;
+        const alert = value < RM.THRESHOLDS.recurvatumDeg;
         return clinicalView({
           dir: '過伸展',
           val: absVal.toFixed(1) + '°',
@@ -562,7 +562,7 @@
    * ΔX = (X_joint − X_origin) × FacingSign / S_px2cm
    * FacingSign は +1 で画面右が前方。正の ΔX は前方偏位。
    * 膝は大転子・膝・外果のなす角を 180° − Angle とし、
-   * −5° 未満を反張膝、+5° 超を屈曲拘縮疑いとする。
+   * 過伸展側の角度が recurvatumDeg より小さいと反張膝、屈曲 5° 超を屈曲拘縮疑いとする。
    *
    * landmarks は MediaPipe 正規化座標。fitBounds を渡すとアスペクト維持後の
    * Canvas 画素へ写してから測る。省略時は Canvas 全面へ写す。
@@ -696,7 +696,7 @@
         rom.kneeDeg = kneeAngleDeg;
         const kneeView = RM.ClinicalAngleFormatter.formatKnee(kneeAngleDeg);
         if (kneeView.status === 'alert') {
-          warnings.push('反張膝です。過伸展が3°を超えています。');
+          warnings.push('反張膝です。過伸展が' + Math.abs(RM.THRESHOLDS.recurvatumDeg) + '°を超えています。');
         } else if (kneeView.status === 'warn') {
           warnings.push('膝屈曲位です。屈曲拘縮が疑われます（5°超）。');
         }

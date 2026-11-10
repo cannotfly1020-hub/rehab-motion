@@ -118,7 +118,7 @@ function splitClinical(text) {
   const raw = text == null || text === '' ? '—' : String(text);
   if (raw === '—') return { dir: '', value: '—' };
   if (raw === '正常アライメント') return { dir: '正常アライメント', value: '' };
-  const match = raw.match(/^(右偏位|左偏位|右下がり|左下がり|右側屈|左側屈|正常アライメント|正中|前|後|屈曲|伸展位|過伸展|伸展|前傾|後傾|垂直|前屈|後屈|中間位|外反|内反|水平)\s+(.+)$/);
+  const match = raw.match(/^(頭頚部前傾|頭頚部後傾|右偏位|左偏位|右下がり|左下がり|右側屈|左側屈|正常アライメント|正中|前|後|屈曲|伸展位|過伸展|伸展|前傾|後傾|垂直|前屈|後屈|中間位|外反|内反|水平)\s+(.+)$/);
   if (!match) return { dir: '', value: raw };
   return { dir: match[1], value: match[2] };
 }

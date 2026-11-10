@@ -47,7 +47,7 @@ Step 3 で姿勢結果が返ると `onPoseResults` が動きます。
 
 1. `results.poseLandmarks` を `state.rawLandmarks` に置く。時刻は `state.pendingSampleTime`。
 2. `recomputeAlignment` が、同じランドマークで矢状面と前額面を両方計算する。原点の画素は `RM.getAspectFitBounds` でレターボックス後の領域に合わせる。
-3. `detectBodyPlane` の結果を `applyDetectedPlane` に渡す。自信のある判定が 2 回連続し、手動ロックが無いときだけ `state.plane` を切り替える。切り替わったときだけトーストを出す。
+3. `detectBodyPlane` の結果を `applyDetectedPlane` に渡す。自信のある同じ平面が 2 回続いたとき、そのメディアでまだ自動決定しておらず、手動ロックも無いときだけ `state.plane` を一度決める。初回決定ではトーストを出さない。決定後に別平面が続いても `state.plane` は変えず、提案トーストだけを出す。解析中の表示変更は手動トグルで行う。
 4. 動画なら矢状面の cm 偏位を `state.swaySamples` に積む。静止画は積まない。
 5. `refresh` が DOM の数値を更新し、`renderFrameOnly` がキャンバスと波線を描く。
 
@@ -82,8 +82,9 @@ Pose の初期化と送信だけです。モデルは CDN から端末へ読み�
 | `alignment` | 矢状面の計算結果。`ok` が偽なら未確定 |
 | `frontal` | 前額面の計算結果 |
 | `plane` | 今表示している平面。`sagittal` または `frontal` |
-| `planeLock` | 手動選択。`null` のときだけ自動切替が効く |
-| `detectedPlane` / `planeStreak` | 自動判定の連続回数。2 回目で切替 |
+| `planeLock` | 手動選択。入っているあいだ、初回の自動決定はしない。`clearAnalysis` まで残る |
+| `detectedPlane` / `planeStreak` | 同じ平面が続いた回数。2 回目で、未決定かつロック無しなら一度だけ `state.plane` を決める。決定後は提案トーストだけで、平面は変えない |
+| `planeSeeded` | そのメディアで初回の自動決定を済ませたか。初期オブジェクトには無く、決めたあと、または `clearAnalysis` で入る |
 | `toastTimer` | 平面トーストのタイマー |
 | `hudCollapsed` | キャンバス左上の AI ステータスを畳んだか |
 | `isRomDrawerOpen` | ROM ドロワーが開いているか |
@@ -158,7 +159,7 @@ MediaPipe の番号は、その人の解剖的な左右です。カメラに向�
 | --- | --- | --- | --- | --- |
 | 肩 | 絶対値 1° 未満で中間位 | 屈曲 | 伸展 | 屈曲かつ 20° 超で warn |
 | 肘 | 2° 未満で中間位 | 屈曲 | 過伸展 | 屈曲 30° 超、または過伸展 5° 超で warn |
-| 頸 | 1° 未満で中間位 | 前屈 | 後屈 | 前屈 15° 超で warn |
+| 頸 | 1° 未満で中間位 | 頭頚部前傾 | 頭頚部後傾 | 頭頚部前傾かつ 15° 超で warn。耳と肩を結ぶ線の鉛直傾きで、頸椎の屈曲角ではない |
 | 体幹 | 1° 未満で垂直 0° | 前傾 | 後傾 | 絶対値 5° 超で warn |
 | 股 | 1.5° 未満で中間位 | 屈曲 | 伸展 | 屈曲 10° 超で warn |
 | 膝 | 絶対値 2° 以内は伸展位 0° | 屈曲 | 過伸展 | 過伸展の絶対値が 3° を超えると badge「反張膝 ⚠️」と status alert。屈曲の絶対値が 5° を超えると badge「屈曲拘縮疑い」と status warn |
