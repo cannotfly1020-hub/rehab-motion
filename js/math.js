@@ -265,6 +265,11 @@
     return !!(point && point.visibility >= RM.THRESHOLDS.minVisibility);
   }
 
+  function measurementVersion() {
+    const version = RM.VERSION;
+    return version && version.fullString ? version.fullString : '';
+  }
+
   function emptyResult(heightCm, warnings, extra) {
     return Object.assign({
       ok: false,
@@ -281,7 +286,8 @@
       kneeAngleDeg: null,
       recurvatum: null,
       rom: nullRom(),
-      points: null
+      points: null,
+      version: measurementVersion()
     }, extra || {});
   }
 
@@ -712,6 +718,7 @@
       kneeAngleDeg: kneeAngleDeg,
       recurvatum: kneeAngleDeg === null ? null : RM.ClinicalAngleFormatter.formatKnee(kneeAngleDeg).status === 'alert',
       rom: rom,
+      version: measurementVersion(),
       points: {
         vertex: vertex,
         ear: ear,
@@ -801,6 +808,7 @@
       plane: 'frontal',
       warnings: [warning || FRONTAL_MASK_WARNING],
       swayValues: null,
+      version: measurementVersion(),
       headTilt: dashMeasure('頭部'),
       shoulderLevel: dashMeasure('肩'),
       pelvisLevel: dashMeasure('骨盤'),
@@ -941,6 +949,7 @@
       px2cm: px2cm,
       originX: originX,
       rightSign: rightSign,
+      version: measurementVersion(),
       headTilt: levelView(levelDegrees(leftEar, rightEar), 'flex'),
       shoulderLevel: levelView(levelDegrees(leftShoulder, rightShoulder), 'level'),
       pelvisLevel: levelView(levelDegrees(leftHip, rightHip), 'level'),

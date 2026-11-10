@@ -405,6 +405,7 @@ function updateNotes() {
     source.warnings.forEach(function (warning) { lines.push(warning); });
   }
   lines.push('参考表示です。診断は有資格者が行ってください。');
+  if (RM.VERSION && RM.VERSION.fullString) lines.push(RM.VERSION.fullString);
   const text = lines.join(' ');
   if (note && note.textContent !== text) note.textContent = text;
 }

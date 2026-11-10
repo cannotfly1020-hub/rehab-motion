@@ -454,6 +454,9 @@
     if (diagnostics && diagnostics.status === 'error' && diagnostics.error) {
       lines.push(diagnostics.error);
     }
+    const version = RM.VERSION;
+    if (version && version.model) lines.push('モデル  ' + version.model);
+    if (version && version.engine) lines.push('計算式  ' + version.engine);
     return lines;
   }
 

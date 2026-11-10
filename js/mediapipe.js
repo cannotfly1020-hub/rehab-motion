@@ -5,6 +5,12 @@
 
   const POSE_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/pose/';
 
+  RM.VERSION = Object.freeze({
+    model: 'MediaPipe Pose v0.5.1675469404',
+    engine: 'Engine v1.2.0',
+    fullString: 'MediaPipe Pose v0.5.1675469404 | Engine v1.2.0'
+  });
+
   RM.aiDiagnostics = {
     latencyMs: 0,
     fps: 0,
