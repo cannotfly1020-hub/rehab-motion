@@ -287,6 +287,79 @@
   color: rgba(255, 255, 255, 0.6);
 }
 
+.clinical-entry {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 12px 8px;
+}
+
+#btn-clinical-use {
+  min-height: 28px;
+  padding: 2px 10px;
+  font-size: 12px;
+}
+
+.clinical-use {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(2, 6, 16, 0.55);
+  touch-action: pan-y pinch-zoom;
+}
+
+.clinical-use[hidden] {
+  display: none !important;
+}
+
+.clinical-use-panel {
+  width: min(560px, 100%);
+  max-height: min(78vh, calc(100dvh - 48px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior-y: contain;
+  padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
+  border-radius: 16px 16px 0 0;
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 0;
+  color: #e2e8f0;
+}
+
+.clinical-use-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.clinical-use-head h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.clinical-use-meta,
+.clinical-use-panel p,
+.clinical-use-panel li {
+  color: rgba(226, 232, 240, 0.82);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.clinical-use-panel h3 {
+  margin: 14px 0 4px;
+  font-size: 13px;
+}
+
+.clinical-use-panel ul {
+  margin: 4px 0 0;
+  padding-left: 1.2em;
+}
+
 @media (min-width: 720px) {
   .metric {
     padding: 8px 10px;

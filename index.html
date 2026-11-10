@@ -32,6 +32,9 @@
         <li id="stepper-2"><span>02</span>身長</li>
         <li id="stepper-3"><span>03</span>解析</li>
       </ol>
+      <p class="clinical-entry">
+        <button type="button" id="btn-clinical-use" class="btn btn-ghost" aria-haspopup="dialog" aria-controls="clinical-use">臨床利用指針</button>
+      </p>
     </header>
 
     <main>
@@ -331,6 +334,29 @@
         </div>
       </section>
     </main>
+  </div>
+  <div id="clinical-use" class="clinical-use" hidden aria-hidden="true">
+    <div class="clinical-use-panel" role="dialog" aria-modal="true" aria-labelledby="clinical-use-title">
+      <div class="clinical-use-head">
+        <h2 id="clinical-use-title">臨床利用指針</h2>
+        <button type="button" id="btn-clinical-use-close" class="btn btn-ghost">閉じる</button>
+      </div>
+      <p class="clinical-use-meta">版 1.0.0（2026-11-10） / MediaPipe Pose v0.5.1675469404 / Engine v1.2.0</p>
+      <h3>1. 意図する使用目的</h3>
+      <p>立位の 2D 骨格推定から、側面と正面・背面のアライメントを参考表示するためのアプリです。専門職が対面評価を行うときの補助的な視覚ツールです。</p>
+      <h3>2. 対象ユーザー</h3>
+      <p>理学療法士、作業療法士、医師、柔道整復師、アスレティックトレーナー等の運動器・リハビリテーション専門職と、その指導下にある被験者です。</p>
+      <h3>3. 非適応</h3>
+      <ul>
+        <li>計測値だけを、変形性関節症、脊柱側弯症、靭帯断裂、拘縮などの確定診断の根拠にしない。</li>
+        <li>手術計画や装具処方の最終決定には、X線、CT、MRI、三次元動作解析を使う。</li>
+        <li>衣服で指標が隠れる、カメラが大きく仰ぐ・俯く、数値が「—」、視認性が 0.5 未満のフレームでは判断しない。</li>
+      </ul>
+      <h3>4. プログラム医療機器ではない</h3>
+      <p>薬機法のプログラム医療機器として承認・認証されたものではありません。出力は参考値です。カルテに書くときは「単眼 AI 参考測定値」と明記し、誤差幅（±1.5 cm / ±3.5° / ±2.0°）を含めて総合判断してください。</p>
+      <h3>5. 推定誤差</h3>
+      <p>(±1.5 cm)、（±3.5°）、（±2.0°）は単眼カメラの視差と幾何換算の標準推定誤差です。真値はこの幅の中に分布する可能性があります。</p>
+    </div>
   </div>
   <noscript>JavaScriptを有効にしてください。姿勢推定と数値計算はこの端末内で完結します。</noscript>
 

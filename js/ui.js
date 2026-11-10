@@ -619,6 +619,38 @@ function syncPillarbox() {
   wrapper.style.setProperty('--pillar', bar + 'px');
 }
 
+function setClinicalUseOpen(open) {
+  const dialog = document.getElementById('clinical-use');
+  const opener = document.getElementById('btn-clinical-use');
+  if (!dialog) return;
+  const on = !!open;
+  dialog.hidden = !on;
+  dialog.classList.toggle('is-open', on);
+  dialog.setAttribute('aria-hidden', on ? 'false' : 'true');
+  const close = document.getElementById('btn-clinical-use-close');
+  if (on && close) close.focus();
+  else if (!on && opener) opener.focus();
+}
+
+function bindClinicalUse() {
+  const opener = document.getElementById('btn-clinical-use');
+  const dialog = document.getElementById('clinical-use');
+  const close = document.getElementById('btn-clinical-use-close');
+  if (opener) opener.addEventListener('click', function () { setClinicalUseOpen(true); });
+  if (close) close.addEventListener('click', function () { setClinicalUseOpen(false); });
+  if (dialog) {
+    dialog.addEventListener('click', function (event) {
+      if (event.target === dialog) setClinicalUseOpen(false);
+    });
+  }
+  document.addEventListener('keydown', function (event) {
+    if (event.key !== 'Escape' || !dialog || dialog.hidden) return;
+    setClinicalUseOpen(false);
+  });
+}
+
+bindClinicalUse();
+
   RM.canvasLabel = canvasLabel;
   RM.setSwayTarget = setSwayTarget;
   RM.paintMeasure = paintMeasure;
@@ -646,4 +678,5 @@ function syncPillarbox() {
   RM.syncPlayButton = syncPlayButton;
   RM.syncTransport = syncTransport;
   RM.syncPillarbox = syncPillarbox;
+  RM.setClinicalUseOpen = setClinicalUseOpen;
 })(typeof window !== 'undefined' ? window : globalThis);
