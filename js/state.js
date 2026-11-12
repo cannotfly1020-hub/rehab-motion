@@ -41,7 +41,7 @@ function saveHeight(value) {
     detectedPlane: 'sagittal',
     planeStreak: 0,
     toastTimer: 0,
-    hudCollapsed: false,
+    hudCollapsed: true,
     isRomDrawerOpen: false,
     scrubbing: false,
     rafId: 0,

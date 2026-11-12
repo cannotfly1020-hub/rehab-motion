@@ -384,30 +384,19 @@ function setRomOpen(open) {
 
 function updateNotes() {
   const alignment = state.alignment;
-  const lines = [];
   const frontal = state.frontal;
-  if (state.plane === 'frontal' && frontal && frontal.ok) {
-    lines.push('前額面として左右対称と水平傾斜を計測しています。');
-    lines.push('校正は身長 ' + frontal.heightCm + ' cm の 94% を頭頂〜足首に対応づけています。');
-  } else if (state.plane !== 'frontal' && alignment && alignment.ok) {
-    lines.push(alignment.sideLabel + '側面を計測。前方は' + alignment.facingLabel + '。');
-    lines.push('校正は身長 ' + alignment.heightCm + ' cm の 94% を頭頂〜足首に対応づけています。');
-  } else if (state.mode !== 'empty') {
-    const source = state.plane === 'frontal' ? frontal : alignment;
-    if (!source || !source.warnings || !source.warnings.length) {
-      lines.push(state.plane === 'frontal'
-        ? '姿勢を計測できません。正面から全身を撮影してください。'
-        : '姿勢を計測できません。全身の真横が写るように調整してください。');
-    }
-  }
   const source = state.plane === 'frontal' ? frontal : alignment;
+  let text = '参考表示です。診断は有資格者が行ってください。';
   if (source && source.warnings && source.warnings.length) {
-    source.warnings.forEach(function (warning) { lines.push(warning); });
+    text = '参考表示。' + source.warnings[0];
+  } else if (state.mode !== 'empty' && (!source || source.ok === false)) {
+    text = state.plane === 'frontal'
+      ? '参考表示。正面から全身を撮影してください。'
+      : '参考表示。真横から全身を撮影してください。';
   }
-  lines.push('参考表示です。診断は有資格者が行ってください。');
-  if (RM.VERSION && RM.VERSION.fullString) lines.push(RM.VERSION.fullString);
-  const text = lines.join(' ');
-  if (note && note.textContent !== text) note.textContent = text;
+  if (!note || note.textContent === text) return;
+  note.textContent = text;
+  note.title = text;
 }
 
 function syncPlaneControls() {

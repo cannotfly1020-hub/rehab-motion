@@ -241,9 +241,9 @@
     ctx.setLineDash([]);
 
     const label = caption || 'Plum Line';
-    ctx.font = '600 ' + Math.round(11 * scale) + 'px ' + FONT;
-    const width = ctx.measureText(label).width + 12 * scale;
-    const height = 18 * scale;
+    ctx.font = '600 ' + Math.round(10 * scale) + 'px ' + FONT;
+    const width = ctx.measureText(label).width + 10 * scale;
+    const height = 14 * scale;
     const placeLeft = originX > canvas.width * 0.72;
     const x = Math.max(6 * scale, Math.min(canvas.width - width - 6 * scale, placeLeft ? originX - width - 6 * scale : originX + 6 * scale));
     const y = canvas.height - height - 10 * scale;
@@ -427,16 +427,25 @@
     return '#94a3b8';
   }
 
+  function shortStatus(diagnostics) {
+    const status = diagnostics && diagnostics.status;
+    if (status === 'tracking') return '追跡中';
+    if (status === 'ready') return 'AI ✓';
+    if (status === 'running') return '推論中';
+    if (status === 'loading') return '読込中';
+    if (status === 'no-pose') return '未検出';
+    if (status === 'error') return 'エラー';
+    return '待機';
+  }
+
   function hudLines(diagnostics, alignment, collapsed) {
+    if (collapsed) return [shortStatus(diagnostics)];
     const fps = diagnostics && diagnostics.fps ? diagnostics.fps : 0;
     const hasFrame = !!(diagnostics && diagnostics.frameCount > 0);
-    if (collapsed) {
-      return ['AI ' + (hasFrame && fps ? fps.toFixed(0) + ' fps' : '状態') + '  ▸'];
-    }
     const visibility = diagnostics && typeof diagnostics.visibility === 'number' ? diagnostics.visibility : 0;
     const latency = diagnostics && typeof diagnostics.latencyMs === 'number' ? diagnostics.latencyMs : 0;
     const lines = [
-      'AI認識ステータス  ▾',
+      'AI  ▾',
       '状態  ' + statusLabel(diagnostics && diagnostics.status),
       'レイテンシ  ' + (hasFrame ? Math.round(latency) + ' ms' : '—'),
       'FPS  ' + (hasFrame && fps ? fps.toFixed(1) : '—'),
@@ -446,83 +455,98 @@
       lines.push('平面  前額面');
     } else if (alignment && alignment.sideLabel) {
       lines.push('側面  ' + alignment.sideLabel);
-      lines.push('前方  ' + (alignment.facingLabel || '不明'));
-    }
-    if (alignment && typeof alignment.px2cm === 'number') {
-      lines.push('校正  ' + (1 / alignment.px2cm).toFixed(3) + ' cm/px');
     }
     if (diagnostics && diagnostics.status === 'error' && diagnostics.error) {
       lines.push(diagnostics.error);
     }
-    const version = RM.VERSION;
-    if (version && version.model) lines.push('モデル  ' + version.model);
-    if (version && version.engine) lines.push('計算式  ' + version.engine);
     return lines;
+  }
+
+  function paintHudShell(ctx, x, y, boxWidth, boxHeight, scale) {
+    roundedRect(ctx, x, y, boxWidth, boxHeight, boxHeight / 2);
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.42)';
+    ctx.fill();
+    ctx.lineWidth = Math.max(1, scale);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.stroke();
   }
 
   function drawHud(ctx, canvas, frame, scale) {
     const diagnostics = frame.diagnostics || {};
     const collapsed = !!frame.hudCollapsed;
-    const maxTextWidth = Math.min(canvas.width * 0.7, 260 * scale);
+    const x = 8 * scale;
+    const y = 8 * scale;
+
+    if (collapsed) {
+      const label = shortStatus(diagnostics);
+      const fontSize = Math.max(10, Math.round(10 * scale));
+      ctx.save();
+      ctx.font = '600 ' + fontSize + 'px ' + FONT;
+      const showDot = label.indexOf('AI') !== 0;
+      const dotR = 3 * scale;
+      const gap = showDot ? 5 * scale : 0;
+      const textW = ctx.measureText(label).width;
+      const padX = 8 * scale;
+      const boxWidth = padX * 2 + (showDot ? dotR * 2 + gap : 0) + textW;
+      const boxHeight = Math.max(18 * scale, fontSize + 8 * scale);
+      paintHudShell(ctx, x, y, boxWidth, boxHeight, scale);
+      if (showDot) {
+        ctx.beginPath();
+        ctx.arc(x + padX + dotR, y + boxHeight / 2, dotR, 0, Math.PI * 2);
+        ctx.fillStyle = statusColor(diagnostics.status);
+        ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(248, 250, 252, 0.88)';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, x + padX + (showDot ? dotR * 2 + gap : 0), y + boxHeight / 2);
+      ctx.restore();
+      const minTap = 44 * scale;
+      RM.hudHitRect = {
+        x: x,
+        y: y,
+        width: Math.max(boxWidth, minTap),
+        height: Math.max(boxHeight, minTap)
+      };
+      return;
+    }
+
+    const maxTextWidth = Math.min(canvas.width * 0.42, 168 * scale);
     ctx.save();
-    ctx.font = '600 ' + Math.round(12 * scale) + 'px ' + FONT;
-    const rawLines = hudLines(diagnostics, frame.alignment, collapsed);
-    let lines = [];
-    rawLines.forEach(function (line) {
+    ctx.font = '600 ' + Math.round(11 * scale) + 'px ' + FONT;
+    const lines = [];
+    hudLines(diagnostics, frame.alignment, false).forEach(function (line) {
       wrapText(ctx, line, maxTextWidth).forEach(function (part) { lines.push(part); });
     });
-    if (collapsed) lines = [rawLines[0]];
-
-    const lineHeight = 16 * scale;
-    const padX = 10 * scale;
-    const padY = 8 * scale;
+    const lineHeight = 14 * scale;
+    const padX = 8 * scale;
+    const padY = 6 * scale;
     let widest = 0;
     lines.forEach(function (line) {
       widest = Math.max(widest, ctx.measureText(line).width);
     });
-    const boxWidth = widest + padX * 2;
-    const boxHeight = Math.max(collapsed ? 32 * scale : 0, lines.length * lineHeight + padY * 2);
-    const x = 10 * scale;
-    const y = 10 * scale;
-
-    roundedRect(ctx, x, y, boxWidth, boxHeight, 10 * scale);
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+    const boxWidth = Math.min(maxTextWidth + padX * 2, widest + padX * 2);
+    const boxHeight = lines.length * lineHeight + padY * 2;
+    roundedRect(ctx, x, y, boxWidth, boxHeight, 12 * scale);
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.55)';
     ctx.fill();
     ctx.lineWidth = Math.max(1, scale);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
     ctx.stroke();
-    ctx.lineWidth = Math.max(1, 1.25 * scale);
-    ctx.strokeStyle = 'rgba(16, 185, 129, 0.45)';
-    ctx.stroke();
-
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     lines.forEach(function (line, index) {
-      const isTitle = index === 0;
-      ctx.fillStyle = isTitle ? '#34d399' : '#e2e8f0';
-      if (!isTitle && line.indexOf('視認性') === 0 && diagnostics.frameCount > 0 && diagnostics.visibility < thresholds().minVisibility) {
+      ctx.fillStyle = index === 0 ? '#34d399' : 'rgba(248, 250, 252, 0.9)';
+      if (index > 0 && line.indexOf('視認性') === 0 && diagnostics.frameCount > 0 && diagnostics.visibility < thresholds().minVisibility) {
         ctx.fillStyle = '#fbbf24';
       }
-      if (!isTitle && diagnostics.status === 'error' && line === diagnostics.error) {
+      if (index > 0 && diagnostics.status === 'error' && line === diagnostics.error) {
         ctx.fillStyle = '#fda4af';
       }
       ctx.fillText(line, x + padX, y + padY + lineHeight * index + lineHeight / 2);
     });
-
-    const dot = statusColor(diagnostics.status);
-    ctx.beginPath();
-    ctx.arc(x + boxWidth - 10 * scale, y + 12 * scale, 3.2 * scale, 0, Math.PI * 2);
-    ctx.fillStyle = dot;
-    ctx.fill();
     ctx.restore();
-
-    const minTap = 44 * scale;
-    RM.hudHitRect = {
-      x: x,
-      y: y,
-      width: Math.max(boxWidth, minTap),
-      height: Math.max(boxHeight, minTap)
-    };
+    RM.hudHitRect = { x: x, y: y, width: boxWidth, height: boxHeight };
   }
 
   function swaySeriesStyle(target) {
@@ -777,9 +801,9 @@
     ctx.save();
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    drawSegment(ctx, points.leftEar, points.rightEar, scale, 'rgba(226, 232, 240, 0.9)');
-    drawSegment(ctx, points.leftShoulder, points.rightShoulder, scale, 'rgba(226, 232, 240, 0.9)');
-    drawSegment(ctx, points.leftHip, points.rightHip, scale, 'rgba(226, 232, 240, 0.9)');
+    drawSegment(ctx, points.leftEar, points.rightEar, scale * 0.65, 'rgba(226, 232, 240, 0.72)');
+    drawSegment(ctx, points.leftShoulder, points.rightShoulder, scale * 0.65, 'rgba(226, 232, 240, 0.72)');
+    drawSegment(ctx, points.leftHip, points.rightHip, scale * 0.65, 'rgba(226, 232, 240, 0.72)');
     function kneeColor(view) {
       if (!view || view.status === 'none') return '#94a3b8';
       if (view.status === 'alert') return '#f43f5e';
@@ -795,16 +819,6 @@
     });
     if (points.leftAnkle) drawDot(ctx, points.leftAnkle, '#34d399', 4.2 * scale, scale);
     if (points.rightAnkle) drawDot(ctx, points.rightAnkle, '#34d399', 4.2 * scale, scale);
-    function mid(a, b) {
-      if (!a || !b) return null;
-      return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-    }
-    const earMid = mid(points.leftEar, points.rightEar);
-    const shoulderMid = mid(points.leftShoulder, points.rightShoulder);
-    const hipMid = mid(points.leftHip, points.rightHip);
-    if (earMid) drawMiniBadge(ctx, earMid.x, earMid.y - 16 * scale, frontal.headTilt && frontal.headTilt.text, scale);
-    if (shoulderMid) drawMiniBadge(ctx, shoulderMid.x, shoulderMid.y - 16 * scale, frontal.shoulderLevel && frontal.shoulderLevel.text, scale);
-    if (hipMid) drawMiniBadge(ctx, hipMid.x, hipMid.y - 16 * scale, frontal.pelvisLevel && frontal.pelvisLevel.text, scale);
     ctx.restore();
   }
 
